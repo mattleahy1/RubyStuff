@@ -15,7 +15,7 @@
       height: 100dvh;
       overflow: hidden;
       font-family: 'Courier New', monospace;
-      touch-action: none;
+      touch-action: manipulation;
     }
     #gameCanvas {
       display: block;
@@ -605,9 +605,10 @@ function showOverlay(title, scoreText, btnText) {
     <h1>${title}</h1>
     <div class="score">${scoreText}</div>
     ${game.score > game.hiScore ? '<p style="color:#ff0">NEW HIGH SCORE!</p>' : `<p>HI: ${game.hiScore}</p>`}
-    <button id="startBtn" onclick="startGame()">${btnText}</button>
+    <button id="startBtn">${btnText}</button>
   `;
   ov.style.display = 'flex';
+  bindStartBtn();
   if (game.score > game.hiScore) game.hiScore = game.score;
 }
 
@@ -620,7 +621,13 @@ function startGame() {
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-document.getElementById('startBtn').addEventListener('click', startGame);
+function bindStartBtn() {
+  const btn = document.getElementById('startBtn');
+  if (!btn) return;
+  btn.addEventListener('click', startGame);
+  btn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
+}
+bindStartBtn();
 loop();
 </script>
 </body>
