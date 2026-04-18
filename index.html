@@ -84,23 +84,12 @@
       justify-content: center;
       color: #0f0;
       z-index: 20;
+      cursor: pointer;
+      touch-action: manipulation;
     }
     #overlay h1 { font-size: 36px; margin-bottom: 16px; text-shadow: 0 0 20px #0f0; }
     #overlay p  { font-size: 16px; margin-bottom: 8px; color: #8f8; }
     #overlay .score { font-size: 22px; margin: 16px 0; }
-    #startBtn {
-      margin-top: 20px;
-      padding: 14px 40px;
-      font-size: 20px;
-      font-family: inherit;
-      background: transparent;
-      color: #0f0;
-      border: 3px solid #0f0;
-      cursor: pointer;
-      border-radius: 6px;
-      letter-spacing: 2px;
-    }
-    #startBtn:hover { background: rgba(0,255,0,0.2); }
   </style>
 </head>
 <body>
@@ -123,8 +112,7 @@
   <div id="overlay">
     <h1>SPACE INVADERS</h1>
     <p>Destroy all aliens before they reach you!</p>
-    <p style="margin-top:12px; color:#ff0">Touch controls supported</p>
-    <button id="startBtn">START GAME</button>
+    <p style="margin-top:20px; color:#ff0; font-size:22px; letter-spacing:2px;">TAP ANYWHERE TO START</p>
   </div>
 
 <script>
@@ -159,8 +147,9 @@ let game = {
   hiScore: 0
 };
 
-let player, aliens, bullets, bombs, shields, particles;
-let alienDir, alienSpeed, alienDropping, bombTimer, mysteryShip;
+let player = null;
+let aliens = [], bullets = [], bombs = [], shields = [], particles = [];
+let alienDir = 1, alienSpeed = 0.4, alienDropping = false, bombTimer = 120, mysteryShip = null;
 let keys = { left: false, right: false, fire: false };
 let lastFire = 0;
 
@@ -509,7 +498,7 @@ function die() {
   updateUI();
   if (game.lives <= 0) {
     game.over = true;
-    showOverlay('GAME OVER', `SCORE: ${game.score}`, 'PLAY AGAIN');
+    showOverlay('GAME OVER', `SCORE: ${game.score}`);
   } else {
     player.x = canvas.width / 2 - player.w / 2;
     bullets = []; bombs = [];
@@ -599,17 +588,16 @@ function updateUI() {
   document.getElementById('levelDisplay').textContent = `LV ${game.level}`;
 }
 
-function showOverlay(title, scoreText, btnText) {
+function showOverlay(title, scoreText) {
+  if (game.score > game.hiScore) game.hiScore = game.score;
   const ov = document.getElementById('overlay');
   ov.innerHTML = `
     <h1>${title}</h1>
     <div class="score">${scoreText}</div>
-    ${game.score > game.hiScore ? '<p style="color:#ff0">NEW HIGH SCORE!</p>' : `<p>HI: ${game.hiScore}</p>`}
-    <button id="startBtn">${btnText}</button>
+    <p>HI: ${game.hiScore}</p>
+    <p style="margin-top:20px; color:#ff0; font-size:22px; letter-spacing:2px;">TAP ANYWHERE TO START</p>
   `;
   ov.style.display = 'flex';
-  bindStartBtn();
-  if (game.score > game.hiScore) game.hiScore = game.score;
 }
 
 function startGame() {
@@ -621,13 +609,9 @@ function startGame() {
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-function bindStartBtn() {
-  const btn = document.getElementById('startBtn');
-  if (!btn) return;
-  btn.addEventListener('click', startGame);
-  btn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
-}
-bindStartBtn();
+const overlay = document.getElementById('overlay');
+overlay.addEventListener('click', startGame);
+overlay.addEventListener('touchstart', e => { e.preventDefault(); startGame(); }, { passive: false });
 loop();
 </script>
 </body>
