@@ -159,7 +159,8 @@ let game = {
 
 let player = null;
 let aliens = [], bullets = [], bombs = [], shields = [], particles = [];
-let alienDir = 1, alienSpeed = 0.4, alienDropping = false, bombTimer = 120, mysteryShip = null;
+let alienDir = 1, alienDropping = false, bombTimer = 120, mysteryShip = null;
+let alienStepTimer = 0;
 let keys = { left: false, right: false, fire: false };
 let lastFire = 0;
 
@@ -310,16 +311,20 @@ function initLevel() {
   const W = canvas.width, H = canvas.height;
   const playH = H - UI_H - CTRL_H;
 
-  const alienSize = Math.min(48, (W - 40) / (ALIEN_COLS + 1));
-  const padX = (W - alienSize * ALIEN_COLS * 1.6) / 2;
-  const startY = UI_H + alienSize;
+  // Guarantee the formation fits: size derived from available width
+  const colGap  = 1.5;
+  const rowGap  = 1.6;
+  const alienSize = Math.min(40, Math.floor((W - 40) / (ALIEN_COLS * colGap)));
+  const formW  = alienSize * colGap * ALIEN_COLS;
+  const padX   = Math.max(8, (W - formW) / 2);
+  const startY = UI_H + alienSize * 1.5;
 
   aliens = [];
   for (let r = 0; r < ALIEN_ROWS; r++) {
     for (let c = 0; c < ALIEN_COLS; c++) {
       aliens.push({
-        x: padX + c * alienSize * 1.6,
-        y: startY + r * alienSize * 1.4,
+        x: padX + c * alienSize * colGap,
+        y: startY + r * alienSize * rowGap,
         w: alienSize, h: alienSize,
         row: r, alive: true, frame: 0
       });
@@ -338,10 +343,10 @@ function initLevel() {
   bullets  = [];
   bombs    = [];
   particles = [];
-  alienDir  = 1;
-  alienSpeed = 0.4 + (game.level - 1) * 0.15;
+  alienDir      = 1;
   alienDropping = false;
-  bombTimer = 120;
+  alienStepTimer = 0;
+  bombTimer     = 120;
   mysteryShip = null;
 
   buildShields();
@@ -414,22 +419,29 @@ function update() {
   alienAnimTimer++;
   if (alienAnimTimer > 20) { alienAnimTimer = 0; alienAnimFrame ^= 1; }
 
-  // Alien movement — classic block: check wall before moving, speed up as count drops
+  // Alien movement — step-based like the original: move N px every M frames.
+  // M shrinks as aliens die so they get dramatically faster.
   const alive = aliens.filter(a => a.alive);
   if (!alive.length) { nextLevel(); return; }
 
   const totalAliens = ALIEN_ROWS * ALIEN_COLS;
-  const currentSpeed = Math.min(alienSpeed * (totalAliens / alive.length), 10);
+  const baseInterval = Math.max(50 - (game.level - 1) * 5, 20);
+  const stepInterval = Math.max(2, Math.round(baseInterval * alive.length / totalAliens));
+  const STEP_PX = 6;
 
-  const leftmost  = Math.min(...alive.map(a => a.x));
-  const rightmost = Math.max(...alive.map(a => a.x + a.w));
+  alienStepTimer++;
+  if (alienStepTimer >= stepInterval) {
+    alienStepTimer = 0;
+    const leftmost  = Math.min(...alive.map(a => a.x));
+    const rightmost = Math.max(...alive.map(a => a.x + a.w));
 
-  if ((alienDir < 0 && leftmost + alienDir * currentSpeed < 6) ||
-      (alienDir > 0 && rightmost + alienDir * currentSpeed > canvas.width - 6)) {
-    aliens.forEach(a => { a.y += 20; });
-    alienDir *= -1;
-  } else {
-    aliens.forEach(a => { a.x += alienDir * currentSpeed; });
+    if ((alienDir < 0 && leftmost  - STEP_PX < 8) ||
+        (alienDir > 0 && rightmost + STEP_PX > canvas.width - 8)) {
+      aliens.forEach(a => { a.y += 20; });
+      alienDir *= -1;
+    } else {
+      aliens.forEach(a => { a.x += alienDir * STEP_PX; });
+    }
   }
 
   // Alien reached player row?
