@@ -308,7 +308,9 @@ function hitsShield(bx, by, bw, bh) {
 
 // ── Level init ────────────────────────────────────────────────────────────────
 function initLevel() {
-  const W = canvas.width, H = canvas.height;
+  const W = Math.max(canvas.width,  window.innerWidth,  320);
+  const H = Math.max(canvas.height, window.innerHeight, 568);
+  canvas.width = W; canvas.height = H;
   const playH = H - UI_H - CTRL_H;
 
   // Guarantee the formation fits: size derived from available width
@@ -317,6 +319,9 @@ function initLevel() {
   const alienSize = Math.min(40, Math.floor((W - 40) / (ALIEN_COLS * colGap)));
   const formW  = alienSize * colGap * ALIEN_COLS;
   const padX   = Math.max(8, (W - formW) / 2);
+  // Debug — remove once confirmed working
+  console.log(`initLevel: W=${W} H=${H} alienSize=${alienSize} formW=${formW} padX=${Math.round(padX)}`);
+  document.title = `W=${W} H=${H} as=${alienSize}`;
   const startY = UI_H + alienSize * 1.5;
 
   aliens = [];
@@ -605,6 +610,13 @@ function draw() {
 
   // Particles
   updateParticles();
+
+  // Temp debug — shows canvas size and player Y on screen
+  if (!game.over && player) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px monospace';
+    ctx.fillText(`canvas:${canvas.width}x${canvas.height}  playerY:${Math.round(player.y)}`, 8, canvas.height - 8);
+  }
 }
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
@@ -637,6 +649,7 @@ function startGame() {
   document.getElementById('overlay').style.display = 'none';
   game.score = 0; game.lives = 3; game.level = 1; game.over = false;
   player = null;
+  resize(); // ensure canvas dimensions are current before layout
   initLevel();
   updateUI();
 }
