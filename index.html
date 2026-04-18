@@ -319,9 +319,6 @@ function initLevel() {
   const alienSize = Math.min(40, Math.floor((W - 40) / (ALIEN_COLS * colGap)));
   const formW  = alienSize * colGap * ALIEN_COLS;
   const padX   = Math.max(8, (W - formW) / 2);
-  // Debug — remove once confirmed working
-  console.log(`initLevel: W=${W} H=${H} alienSize=${alienSize} formW=${formW} padX=${Math.round(padX)}`);
-  document.title = `W=${W} H=${H} as=${alienSize}`;
   const startY = UI_H + alienSize * 1.5;
 
   aliens = [];
@@ -610,13 +607,6 @@ function draw() {
 
   // Particles
   updateParticles();
-
-  // Temp debug — shows canvas size and player Y on screen
-  if (!game.over && player) {
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px monospace';
-    ctx.fillText(`canvas:${canvas.width}x${canvas.height}  playerY:${Math.round(player.y)}`, 8, canvas.height - 8);
-  }
 }
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
