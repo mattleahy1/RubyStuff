@@ -118,7 +118,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// ── Layout ────────────────────────────────────────────────────────────────────
+// ââ Layout ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const CTRL_H = 100;
 const UI_H   = 44;
 
@@ -133,14 +133,14 @@ window.addEventListener('resize', onResize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 
-// Block pinch-zoom on iOS (user-scalable=no is ignored in modern iOS Safari)
+// Block pinch-zoom on iOS
 document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ââ Constants âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const ALIEN_ROWS  = 4;
 const ALIEN_COLS  = 10;
 const BULLET_SPD  = 9;
@@ -150,7 +150,7 @@ const SHIELD_COUNT = 4;
 
 const ALIEN_COLORS = ['#f0f', '#0ff', '#ff0', '#f80'];
 
-// ── Game state ────────────────────────────────────────────────────────────────
+// ââ Game state ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 let game = {
   score: 0, lives: 3, level: 1,
   over: true, paused: false, started: false,
@@ -164,7 +164,128 @@ let alienStepTimer = 0;
 let keys = { left: false, right: false, fire: false };
 let lastFire = 0;
 
-// ── Sprites (pixel art via canvas) ───────────────────────────────────────────
+// ââ Audio Engine ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+let audioCtx = null;
+let marchNote = 0;
+const MARCH_FREQS = [160, 110, 130, 90]; // classic 4-note cycle
+let mysteryOsc = null, mysteryGain = null;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playTone(freq, type, duration, volume, startTime, freqEnd) {
+  try {
+    const ac = getAudio();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    if (freqEnd !== undefined) {
+      osc.frequency.linearRampToValueAtTime(freqEnd, startTime + duration);
+    }
+    gain.gain.setValueAtTime(volume, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.01);
+  } catch(e) {}
+}
+
+function soundShoot() {
+  try {
+    const ac = getAudio();
+    const t = ac.currentTime;
+    playTone(900, 'square', 0.09, 0.15, t, 200);
+  } catch(e) {}
+}
+
+function soundAlienDie() {
+  try {
+    const ac = getAudio();
+    const t = ac.currentTime;
+    const bufSize = Math.floor(ac.sampleRate * 0.18);
+    const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const g = ac.createGain();
+    src.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.35, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    src.start(t); src.stop(t + 0.2);
+  } catch(e) {}
+}
+
+function soundMysteryHit() {
+  stopMysterySound();
+  try {
+    const ac = getAudio();
+    const t = ac.currentTime;
+    // Quick ascending fanfare
+    [500, 650, 820, 1100].forEach((f, i) => {
+      playTone(f, 'square', 0.08, 0.25, t + i * 0.065);
+    });
+  } catch(e) {}
+}
+
+function soundPlayerDie() {
+  try {
+    const ac = getAudio();
+    const t = ac.currentTime;
+    // Descending death sequence
+    [440, 360, 290, 230, 185, 145, 110, 75].forEach((f, i) => {
+      playTone(f, 'sawtooth', 0.11, 0.35, t + i * 0.08, f * 0.55);
+    });
+  } catch(e) {}
+}
+
+function soundMarch() {
+  try {
+    const ac = getAudio();
+    const t = ac.currentTime;
+    const freq = MARCH_FREQS[marchNote % 4];
+    marchNote = (marchNote + 1) % 4;
+    playTone(freq, 'square', 0.065, 0.45, t);
+  } catch(e) {}
+}
+
+function startMysterySound() {
+  if (mysteryOsc) return;
+  try {
+    const ac = getAudio();
+    mysteryOsc  = ac.createOscillator();
+    mysteryGain = ac.createGain();
+    // LFO for classic warble
+    const lfo     = ac.createOscillator();
+    const lfoGain = ac.createGain();
+    lfo.frequency.value = 25;
+    lfoGain.gain.value  = 180;
+    lfo.connect(lfoGain);
+    lfoGain.connect(mysteryOsc.frequency);
+    mysteryOsc.type = 'sawtooth';
+    mysteryOsc.frequency.value = 480;
+    mysteryOsc.connect(mysteryGain);
+    mysteryGain.connect(ac.destination);
+    mysteryGain.gain.value = 0.1;
+    lfo.start();
+    mysteryOsc.start();
+  } catch(e) { mysteryOsc = null; mysteryGain = null; }
+}
+
+function stopMysterySound() {
+  if (!mysteryOsc) return;
+  try { mysteryOsc.stop(); } catch(e) {}
+  try { mysteryGain.disconnect(); } catch(e) {}
+  mysteryOsc  = null;
+  mysteryGain = null;
+}
+
+// ââ Sprites (pixel art via canvas) âââââââââââââââââââââââââââââââââââââââââââ
 function drawAlien(x, y, size, row, frame) {
   const cx = x + size / 2, cy = y + size / 2;
   ctx.fillStyle = ALIEN_COLORS[row % ALIEN_COLORS.length];
@@ -172,7 +293,6 @@ function drawAlien(x, y, size, row, frame) {
   ctx.shadowBlur = 8;
 
   if (row === 0) {
-    // Jellyfish style
     ctx.beginPath();
     ctx.ellipse(cx, cy - size*0.1, size*0.38, size*0.28, 0, 0, Math.PI*2);
     ctx.fill();
@@ -181,14 +301,12 @@ function drawAlien(x, y, size, row, frame) {
       ctx.fillRect(cx + ox*size - 2, cy + size*0.12, 4, size*0.22);
     });
   } else if (row === 1) {
-    // Crab style
     ctx.fillRect(cx - size*0.32, cy - size*0.18, size*0.64, size*0.36);
     [[-.42,-.12,.1,.22],[.32,-.12,.1,.22]].forEach(([rx,ry,rw,rh]) =>
       ctx.fillRect(cx+rx*size, cy+ry*size, rw*size, rh*size));
     const antX = frame ? [-.28,.28] : [-.22,.22];
     antX.forEach(ax => ctx.fillRect(cx+ax*size-1, cy-size*.38, 2, size*.22));
   } else if (row === 2) {
-    // Squid style
     ctx.beginPath();
     ctx.moveTo(cx, cy - size*.3);
     ctx.lineTo(cx + size*.3, cy + size*.2);
@@ -203,7 +321,6 @@ function drawAlien(x, y, size, row, frame) {
       ctx.fillRect(cx + size*.1, cy - size*.05, 6, 6);
     }
   } else {
-    // Bug style
     ctx.beginPath();
     ctx.arc(cx, cy, size*0.28, 0, Math.PI*2);
     ctx.fill();
@@ -216,17 +333,12 @@ function drawAlien(x, y, size, row, frame) {
 
 function drawPlayer(p) {
   const x = p.x, y = p.y, w = p.w, h = p.h;
-  // Bright glow pass
   ctx.shadowColor = '#0f0';
   ctx.shadowBlur = 18;
   ctx.fillStyle = '#0f0';
-  // Base platform
   ctx.fillRect(x, y + h * .55, w, h * .45);
-  // Mid body
   ctx.fillRect(x + w * .2, y + h * .25, w * .6, h * .35);
-  // Barrel
   ctx.fillRect(x + w * .42, y, w * .16, h * .32);
-  // White highlight overlay for visibility
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#afffaf';
   ctx.fillRect(x + w * .1, y + h * .58, w * .8, h * .12);
@@ -234,7 +346,7 @@ function drawPlayer(p) {
   ctx.fillRect(x + w * .44, y + h * .02, w * .12, h * .1);
 }
 
-// ── Particles ────────────────────────────────────────────────────────────────
+// ââ Particles ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function spawnParticles(x, y, color, n = 12) {
   for (let i = 0; i < n; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -265,7 +377,7 @@ function updateParticles() {
   });
 }
 
-// ── Shield ────────────────────────────────────────────────────────────────────
+// ââ Shield ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function buildShields() {
   shields = [];
   const sw = Math.min(60, canvas.width / (SHIELD_COUNT * 2));
@@ -306,14 +418,12 @@ function hitsShield(bx, by, bw, bh) {
   return false;
 }
 
-// ── Level init ────────────────────────────────────────────────────────────────
+// ââ Level init ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function initLevel() {
   const W = Math.max(canvas.width,  window.innerWidth,  320);
   const H = Math.max(canvas.height, window.innerHeight, 568);
   canvas.width = W; canvas.height = H;
-  const playH = H - UI_H - CTRL_H;
 
-  // Guarantee the formation fits: size derived from available width
   const colGap  = 1.5;
   const rowGap  = 1.6;
   const alienSize = Math.min(40, Math.floor((W - 40) / (ALIEN_COLS * colGap)));
@@ -342,19 +452,21 @@ function initLevel() {
     player.w = pw; player.h = ph;
   }
 
-  bullets  = [];
-  bombs    = [];
+  bullets   = [];
+  bombs     = [];
   particles = [];
   alienDir      = 1;
   alienDropping = false;
   alienStepTimer = 0;
   bombTimer     = 120;
+  stopMysterySound();
   mysteryShip = null;
+  marchNote   = 0;
 
   buildShields();
 }
 
-// ── Input ─────────────────────────────────────────────────────────────────────
+// ââ Input âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft')  keys.left  = true;
   if (e.key === 'ArrowRight') keys.right = true;
@@ -374,7 +486,6 @@ addTouchBtn(document.getElementById('leftBtn'),  'left');
 addTouchBtn(document.getElementById('rightBtn'), 'right');
 addTouchBtn(document.getElementById('fireBtn'),  'fire');
 
-// Swipe to move on canvas
 let touchStartX = null;
 canvas.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
 canvas.addEventListener('touchmove', e => {
@@ -387,7 +498,7 @@ canvas.addEventListener('touchend', () => {
   keys.left = false; keys.right = false; touchStartX = null;
 }, { passive: true });
 
-// ── Game logic ────────────────────────────────────────────────────────────────
+// ââ Game logic ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 let frame = 0;
 let alienAnimTimer = 0;
 let alienAnimFrame = 0;
@@ -398,6 +509,7 @@ function fireBullet() {
   if (bullets.filter(b => !b.enemy).length >= 3) return;
   lastFire = now;
   bullets.push({ x: player.x + player.w/2 - 2, y: player.y - 8, w: 4, h: 14, enemy: false });
+  soundShoot();
 }
 
 function alienBomb() {
@@ -421,8 +533,7 @@ function update() {
   alienAnimTimer++;
   if (alienAnimTimer > 20) { alienAnimTimer = 0; alienAnimFrame ^= 1; }
 
-  // Alien movement — step-based like the original: move N px every M frames.
-  // M shrinks as aliens die so they get dramatically faster.
+  // Alien step-based movement
   const alive = aliens.filter(a => a.alive);
   if (!alive.length) { nextLevel(); return; }
 
@@ -444,10 +555,11 @@ function update() {
     } else {
       aliens.forEach(a => { a.x += alienDir * STEP_PX; });
     }
+    soundMarch(); // â classic march sound on every step
   }
 
   // Alien reached player row?
-  if (alive.some(a => a.y + a.h >= player.y)) { die(); return; }
+  if (alive.some(h => a.y + a.h >= player.y)) { die(); return; }
 
   // Bombs
   bombTimer--;
@@ -459,10 +571,14 @@ function update() {
   // Mystery ship
   if (!mysteryShip && Math.random() < 0.001) {
     mysteryShip = { x: -60, y: UI_H + 12, w: 56, h: 24, dir: 1, speed: 2.5 };
+    startMysterySound();
   }
   if (mysteryShip) {
     mysteryShip.x += mysteryShip.dir * mysteryShip.speed;
-    if (mysteryShip.x > canvas.width + 60) mysteryShip = null;
+    if (mysteryShip.x > canvas.width + 60) {
+      mysteryShip = null;
+      stopMysterySound();
+    }
   }
 
   // Move bullets
@@ -494,6 +610,7 @@ function update() {
         const pts = (ALIEN_ROWS - a.row) * 10;
         game.score += pts;
         spawnParticles(a.x + a.w/2, a.y + a.h/2, ALIEN_COLORS[a.row % ALIEN_COLORS.length]);
+        soundAlienDie();
         updateUI();
         return false;
       }
@@ -501,14 +618,18 @@ function update() {
     return true;
   });
 
-  // Bullet hits mystery
+  // Bullet hits mystery ship
+  // IMPORTANT: check mysteryShip inside the callback too â a previous bullet in the
+  // same frame may have already nulled it, which would crash on property access.
   if (mysteryShip) {
     bullets = bullets.filter(b => {
+      if (!mysteryShip) return true; // already destroyed this frame
       if (b.x < mysteryShip.x+mysteryShip.w && b.x+b.w > mysteryShip.x &&
           b.y < mysteryShip.y+mysteryShip.h && b.y+b.h > mysteryShip.y) {
         game.score += 100 + Math.floor(Math.random() * 5) * 50;
         spawnParticles(mysteryShip.x + mysteryShip.w/2, mysteryShip.y + mysteryShip.h/2, '#f0f', 20);
-        mysteryShip = null;
+        soundMysteryHit();
+        mysteryShip = null; // safe: guarded above for subsequent bullets
         updateUI();
         return false;
       }
@@ -529,10 +650,12 @@ function update() {
 }
 
 function die() {
+  soundPlayerDie();
   game.lives--;
   updateUI();
   if (game.lives <= 0) {
     game.over = true;
+    stopMysterySound();
     showOverlay('GAME OVER', `SCORE: ${game.score}`);
   } else {
     player.x = canvas.width / 2 - player.w / 2;
@@ -546,7 +669,7 @@ function nextLevel() {
   initLevel();
 }
 
-// ── Render ────────────────────────────────────────────────────────────────────
+// ââ Render ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -609,17 +732,17 @@ function draw() {
   updateParticles();
 }
 
-// ── Loop ──────────────────────────────────────────────────────────────────────
+// ââ Loop ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
 
-// ── UI ────────────────────────────────────────────────────────────────────────
+// ââ UI ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function updateUI() {
   document.getElementById('scoreDisplay').textContent = `SCORE: ${game.score}`;
-  document.getElementById('livesDisplay').textContent = '♥'.repeat(Math.max(0, game.lives));
+  document.getElementById('livesDisplay').textContent = 'â¥'.repeat(Math.max(0, game.lives));
   document.getElementById('levelDisplay').textContent = `LV ${game.level}`;
 }
 
@@ -636,15 +759,17 @@ function showOverlay(title, scoreText) {
 }
 
 function startGame() {
+  // Resume AudioContext â required after a user gesture on iOS/Chrome
+  getAudio();
   document.getElementById('overlay').style.display = 'none';
   game.score = 0; game.lives = 3; game.level = 1; game.over = false;
   player = null;
-  resize(); // ensure canvas dimensions are current before layout
+  resize();
   initLevel();
   updateUI();
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// ââ Boot ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const overlay = document.getElementById('overlay');
 overlay.addEventListener('click', startGame);
 overlay.addEventListener('touchstart', e => { e.preventDefault(); startGame(); }, { passive: false });
