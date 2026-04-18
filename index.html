@@ -204,14 +204,23 @@ function drawAlien(x, y, size, row, frame) {
 }
 
 function drawPlayer(p) {
-  ctx.fillStyle = '#0f0';
-  ctx.shadowColor = '#0f0';
-  ctx.shadowBlur = 12;
   const x = p.x, y = p.y, w = p.w, h = p.h;
-  ctx.fillRect(x + w*.1, y + h*.4, w*.8, h*.6);
-  ctx.fillRect(x + w*.3, y + h*.1, w*.4, h*.35);
-  ctx.fillRect(x + w*.45, y, w*.1, h*.15);
+  // Bright glow pass
+  ctx.shadowColor = '#0f0';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = '#0f0';
+  // Base platform
+  ctx.fillRect(x, y + h * .55, w, h * .45);
+  // Mid body
+  ctx.fillRect(x + w * .2, y + h * .25, w * .6, h * .35);
+  // Barrel
+  ctx.fillRect(x + w * .42, y, w * .16, h * .32);
+  // White highlight overlay for visibility
   ctx.shadowBlur = 0;
+  ctx.fillStyle = '#afffaf';
+  ctx.fillRect(x + w * .1, y + h * .58, w * .8, h * .12);
+  ctx.fillRect(x + w * .28, y + h * .28, w * .44, h * .1);
+  ctx.fillRect(x + w * .44, y + h * .02, w * .12, h * .1);
 }
 
 // ── Particles ────────────────────────────────────────────────────────────────
@@ -307,8 +316,8 @@ function initLevel() {
     }
   }
 
-  const pw = alienSize * 1.2;
-  const ph = alienSize * 0.7;
+  const pw = alienSize * 1.6;
+  const ph = alienSize * 0.9;
   if (!player) {
     player = { x: W/2 - pw/2, y: H - CTRL_H - ph - 16, w: pw, h: ph };
   } else {
@@ -395,20 +404,22 @@ function update() {
   alienAnimTimer++;
   if (alienAnimTimer > 20) { alienAnimTimer = 0; alienAnimFrame ^= 1; }
 
-  // Alien movement
+  // Alien movement — classic block: check wall before moving, speed up as count drops
   const alive = aliens.filter(a => a.alive);
   if (!alive.length) { nextLevel(); return; }
 
-  let edgeHit = false;
-  alive.forEach(a => {
-    a.x += alienDir * alienSpeed * (1 + (ALIEN_ROWS*ALIEN_COLS - alive.length) * 0.015);
-    if (a.x < 4 || a.x + a.w > canvas.width - 4) edgeHit = true;
-  });
+  const totalAliens = ALIEN_ROWS * ALIEN_COLS;
+  const currentSpeed = Math.min(alienSpeed * (totalAliens / alive.length), 10);
 
-  if (edgeHit) {
+  const leftmost  = Math.min(...alive.map(a => a.x));
+  const rightmost = Math.max(...alive.map(a => a.x + a.w));
+
+  if ((alienDir < 0 && leftmost + alienDir * currentSpeed < 6) ||
+      (alienDir > 0 && rightmost + alienDir * currentSpeed > canvas.width - 6)) {
+    aliens.forEach(a => { a.y += 20; });
     alienDir *= -1;
-    alive.forEach(a => { a.y += 18; });
-    alienSpeed = Math.min(alienSpeed * 1.05, 8);
+  } else {
+    aliens.forEach(a => { a.x += alienDir * currentSpeed; });
   }
 
   // Alien reached player row?
