@@ -2,22 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Space Invaders</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    html, body {
+      width: 100%; height: 100%;
       background: #000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100dvh;
       overflow: hidden;
       font-family: 'Courier New', monospace;
       touch-action: manipulation;
     }
     #gameCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       display: block;
       image-rendering: pixelated;
     }
@@ -124,11 +123,22 @@ const CTRL_H = 100;
 const UI_H   = 44;
 
 function resize() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const vp = window.visualViewport;
+  canvas.width  = vp ? vp.width  : window.innerWidth;
+  canvas.height = vp ? vp.height : window.innerHeight;
 }
 resize();
-window.addEventListener('resize', () => { resize(); if (!game.over && !game.paused) initLevel(); });
+const onResize = () => { resize(); if (!game.over && !game.paused) initLevel(); };
+window.addEventListener('resize', onResize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
+
+// Block pinch-zoom on iOS (user-scalable=no is ignored in modern iOS Safari)
+document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ALIEN_ROWS  = 4;
