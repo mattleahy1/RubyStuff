@@ -559,7 +559,7 @@ function update() {
   }
 
   // Alien reached player row?
-  if (alive.some(h => a.y + a.h >= player.y)) { die(); return; }
+  if (alive.some(a => a.y + a.h >= player.y)) { die(); return; }
 
   // Bombs
   bombTimer--;
@@ -707,7 +707,7 @@ function draw() {
   drawShields();
 
   // Player
-  if (!game.over) drawPlayer(player);
+  if (!game.over && player) drawPlayer(player);
 
   // Bullets
   ctx.fillStyle = '#ff0';
@@ -734,15 +734,15 @@ function draw() {
 
 // ââ Loop ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function loop() {
-  update();
-  draw();
+  try { update(); } catch(e) { console.error('update:', e); game.over = true; }
+  try { draw();   } catch(e) { console.error('draw:',   e); }
   requestAnimationFrame(loop);
 }
 
 // ââ UI ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function updateUI() {
   document.getElementById('scoreDisplay').textContent = `SCORE: ${game.score}`;
-  document.getElementById('livesDisplay').textContent = 'â¥'.repeat(Math.max(0, game.lives));
+  document.getElementById('livesDisplay').textContent = '\u2665'.repeat(Math.max(0, game.lives));
   document.getElementById('levelDisplay').textContent = `LV ${game.level}`;
 }
 
@@ -758,14 +758,21 @@ function showOverlay(title, scoreText) {
   ov.style.display = 'flex';
 }
 
+let _startPending = false;
 function startGame() {
+  if (_startPending) return;
+  _startPending = true;
+  setTimeout(() => { _startPending = false; }, 600);
+
   // Resume AudioContext â required after a user gesture on iOS/Chrome
-  getAudio();
+  try { getAudio(); } catch(e) {}
   document.getElementById('overlay').style.display = 'none';
-  game.score = 0; game.lives = 3; game.level = 1; game.over = false;
+  game.over = true; // keep true during init so loop skips update safely
+  game.score = 0; game.lives = 3; game.level = 1;
   player = null;
   resize();
   initLevel();
+  game.over = false; // only set false AFTER player/aliens are ready
   updateUI();
 }
 
