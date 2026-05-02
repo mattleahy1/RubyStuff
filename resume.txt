@@ -1,0 +1,190 @@
+Matthew Leahy, M.B.A.
+425-890-6895 | MattLeahy1@hotmail.com | linkedin.com/in/mattleahy
+
+SUMMARY
+Visionary Software Engineering Executive & Agentic AI Strategist with 15+ years of Director+
+leadership experience and deep expertise in hyperscale cloud platforms and Agentic AI transformation.
+Recognized for deep cloud mastery across Amazon AWS, with additional technical depth in GCP. Led core
+engineering organizations spanning diagnostics, deployment infrastructure, telemetry, and hardware
+platform readiness at massive scale. Currently spearheading Agentic AI transformation at Walmart Global
+Tech, driving the Marketplace Agentic Engineering strategy and operating model that enables lean human
+teams to orchestrate AI agents at scale. Experienced at leading global organizations of 200+ engineers
+and driving cross-functional execution across 80+ teams to deliver cloud-native innovation and
+measurable business impact.
+
+EMPLOYMENT HISTORY
+
+Senior Director of Software Engineering – Walmart Global Tech | 7/2024 – Present
+
+  Senior Director of Software Engineering, Marketplace Acceleration | 6/2025 – Present
+  • Authored and drove a Marketplace Agentic Engineering strategy that defined a scalable operating
+    model for staff-led delivery pods combining human engineers and AI agents, including shared platform
+    architecture, autonomy ladder, governance model, and 90-day pilot charter.
+  • Led cross-functional Category Strategic Initiatives across 80+ global teams within Walmart
+    Marketplace, leveraging Agentic AI frameworks, Cursor, and Copilot.
+  • Shaped Marketplace agentic workflow vision by prioritizing high-value target domains, clarifying
+    tool and platform roles (orchestration, autonomous development, governed services), and framed a
+    path to improve engineering leverage, cycle time, and long-term cost efficiency.
+  • Led special initiatives focused on item Conditions, Automotive, B2B, and Holiday as a Service.
+  • Served on the Architectural Committee designing and benchmarking 4 distinct Agentic AI platforms
+    now deployed enterprise-wide across Walmart – Squiggly (Associates), Marty (Marketplace), Wibey
+    (Developers), and Sparky (Shoppers).
+  • Member of the Cloud Infrastructure Governance and Evaluation workgroup, optimizing our cloud
+    (Azure, GCP) spend with engineering objectives.
+  • Presented Marketplace AI strategy to Walmart's Executive Vice President of Technology.
+
+  Senior Director of Software Engineering, Health and Wellness | 7/2024 – 6/2025
+  • Directed a globally distributed organization of 200+, including Directors, Sr. Managers, SDEs,
+    and SDETs in The Fortune #1 Company.
+  • Led and coached a diverse and inclusive software development team within the $40B Walmart
+    Pharmacy business for 5,000+ stores.
+  • Successfully launched the top customer-requested service: Prescription Pickup and Same-Day
+    Delivery on iOS, Android, and Web. This drove a 2x increase in average cart value for enrolled
+    customers.
+  • Led tech modernization efforts, leveraging LLMs, Agentic AI, federated analytics and migration
+    of legacy systems to Microsoft Fabric.
+  • Directed multi-cloud projects including AI for predictive inventory (saving $140M annually),
+    reference data, and the Specialty Pharmacy.
+  • Led the engineering of all Web and Mobile (Android and iOS) customer-facing pharmacy experiences.
+  • Directed engineering for all in-store mobile pharmacy apps including computer vision, the API
+    layer, and the RxOne Associate hand-held platform.
+
+Sr. Director of Software Development – Microsoft | 5/2021 – 5/2023
+  • Directed the Diagnostics, Deployment Infrastructure, and Telemetry engineering organizations
+    within Microsoft Azure.
+  • Managed a Software Dev. Group of 100+ SDEs and SREs, including 1 senior director, 2 directors
+    and 7 managers with a $75M budget.
+  • Defined and executed the technical roadmap for Azure telemetry, Azure diagnostics, and Azure
+    firmware deployment, including GPU computing platforms.
+  • Delivered hyper-scale telemetry services across millions of nodes for Microsoft Azure and
+    internal fleet operations, generating 320 billion rows of data daily.
+  • Built real-time and batch data services including predictive failure analysis with ML and
+    monitoring support for AI workloads running on GPU clusters.
+  • Developed control plane software platforms for node-based and rack-based embedded software
+    deployments.
+  • Managed diagnostic tools and platforms for all Microsoft fleets, providing both automatic and
+    manual repairs.
+  • Recovered billable compute capacity to production, directly impacting Azure's bottom line,
+    saving over $50M annually.
+  • Developed the System Maintainer's Toolbox, empowering 2,500 data center technicians to resolve
+    complex edge-case hardware scenarios.
+  • Facilitated root-cause analysis (5 Whys) and post-incident reviews, advocating for and
+    implementing system-wide resiliency improvements.
+  • Directed engineering for all in-scope software, including government-focused projects.
+  • Managed Microsoft Azure Cloud Hardware Infrastructure Engineering's strategic technical
+    partnership with NVIDIA.
+  • Founded the cross-Azure Fault Code Governance Board, defining and enforcing Fault Code
+    Compliance and Health Grades.
+  • Championed Diversity and Inclusion initiatives by participating in hiring events at historically
+    black colleges and completing advanced internal training.
+  • Served on Microsoft's elite Fast Lead Team, evaluating novel engineering concepts for
+    innovation and patentability.
+
+Sr. Software Development Manager – Amazon AWS | 5/2020 – 2/2021
+  • Single-threaded owner of Vetting at Amazon AWS. Vetting is the team responsible for ensuring
+    that AWS customers can get the capacity they need to run their applications on healthy virtual
+    machines by subjecting all incoming hardware to an extensive battery of tests.
+  • Performed the dual role of Product Manager and Development Manager for all Vetting platforms.
+  • Architected and delivered Heal, AWS's next generation Vetting platform resulting in a 50%
+    reduction in time-to-capacity for new nodes.
+  • Directed a cross-functional organization comprising two primary teams: Vetting Tools and
+    Services and the Heal Platform. This group consisted of Software Development Managers,
+    Sr. Technical Program Managers, and Software Development Engineers.
+  • Executed a strategic roadmap focused on designing and implementing innovative software and
+    hardware platform solutions.
+  • Facilitated core design, architecture, process optimization, development, and resource
+    planning discussions.
+
+Director of Platform Delivery – BioTelemetry (a Philips company) | 10/2018 – 05/2020
+  • Directed a globally distributed engineering organization spanning software development, SRE,
+    and QA across the U.S., North Macedonia, and Costa Rica.
+  • Championed cross-functional initiatives delivering 5x faster response times and throughput,
+    3x concurrent user capacity, and 2x platform uptime through root-cause resolution of a
+    critical device activation defect, stabilizing the BioTel Heart Platform.
+  • Delivered technology and architecture leadership across the digital platform, including
+    machine learning.
+  • Defined and executed the Platform Engineering strategy, emphasizing infrastructure
+    modernization, system observability, and process automation.
+  • Governed DevOps release management and continuous delivery of microservices and software
+    applications.
+  • Provided executive oversight for product development initiatives, ensuring the rapid and
+    profitable delivery of high-quality health tech solutions.
+  • Architected the technical roadmap for next-generation systems, sensor platforms, mobile
+    applications, and secure cloud hosted health data platforms.
+  • Launched a near-shore Agile Mobile Development Team after conducting comprehensive vendor
+    selection research.
+  • Built an Android-based Mobile Blood Glucose monitoring solution with an AWS back-end.
+
+IT Director, Enterprise Technology and Operations – Thermo Fisher Scientific | 8/2017 – 7/2018
+  • Directed the enterprise-scale migration of thermofisher.com and fishersci.com from on-premise
+    infrastructure to AWS, reducing infrastructure costs by 35%.
+  • Pioneered the architectural redesign of the thermofisher.com platform, shifting from a
+    monolithic structure to a microservices architecture via API gateways.
+  • Provided vision and leadership for development and testing of governance activities on
+    multi-tiered B2C and B2B web (thermofisher.com and fishersci.com) and mobile technologies,
+    including ERP interfaces and Thermo Fisher Cloud.
+  • Key member of the Agile Transition Team, driving the enterprise shift from Waterfall
+    methodologies to the Scaled Agile Framework (SAFe).
+
+Sr. Test Manager – Blizzard Entertainment | 10/2016 – 9/2017
+  • Supported Battle.Net, Blizzard's foundational internet-based online gaming, digital
+    distribution, and digital rights management platform.
+  • Ensured platform stability for major titles including World of Warcraft, Diablo 3,
+    Hearthstone, Heroes of the Storm, Overwatch, and Destiny 2.
+  • Directed the Battle.Net Engineering Systems QA team, overseeing manual and automated testing
+    for cloud governance, cloud services (including telemetry), cloud orchestration, the Blizzard
+    Store, and all Blizzard Corporate Applications.
+
+Director of Quality Assurance and Documentation – Symitar | 3/2014 – 9/2016
+  • Served on the Architecture Review Board, contributing directly to the Technical Roadmap and
+    defining the overarching QA strategy.
+  • Led a multidisciplinary team of architects, SDEs, STEs, and security experts who built and
+    tested Episys' Multi-Host Failover functionality.
+  • Developed a cloud-based test automation framework on Microsoft Azure (C#, Coded UI),
+    implementing a data-driven, workflow-based model that handled vast execution variants and
+    exponentially scaled test coverage.
+
+Director of Engineering – Digital Media, YP.com | 3/2012 – 2/2014
+  • Directed the development and launch of the rebranded mobile application, driving collaboration
+    across product management, marketing, and creative teams.
+  • Led a cross-functional organization of Managers, Leads, SDEs, and SDETs to deliver internal
+    products involving complex Salesforce integrations.
+  • Directed the engineering lifecycle for all Web, Mobile (iOS and Android), Tablet, and Desktop
+    applications produced by YP.com.
+  • Spearheaded the successful re-launch of the YP.com SaaS platform on AWS, including an upgrade
+    to Google's DFPP Ad Technology.
+  • Provided technical guidance on Platform Architecture and served as a key voting member of the
+    Change Control Board.
+
+Director of Quality Engineering – Motricity | 11/2009 – 2/2012
+  • Built and scaled the Product Development QA organization from the ground up, directing a global
+    team of 147 personnel across 5 international locations.
+  • Supported Motricity's Service-Oriented Architecture (SOA) to deliver SaaS-based mobile
+    merchandising, marketing, and advertising solutions for major telecom carriers (Verizon, AT&T,
+    Sprint and T-Mobile).
+  • Developed and instituted comprehensive technical onboarding and training programs for global
+    engineering staff.
+  • Directed the quality engineering efforts resulting in 15 successful enterprise product releases
+    including MobileCast, Campaign Manager, Ad Manager, Gateway, Site Designer, Connect,
+    Marketplace, and Insights.
+
+EDUCATION
+M.B.A. (with Honors), City University of Seattle
+B.S. in Computer Information Systems, Eastern Washington University
+Generative AI Fundamentals Specialization, IBM, Credential ID BP4NVGQXD8V5
+Certified Scrum Master, Scrum Alliance (CSM)
+
+TECHNICAL EXPERTISE
+AI & Machine Learning: Generative AI, Agentic AI, Multimodal AI, LLMs (OpenAI ChatGPT and Codex,
+  Anthropic Claude Sonnet and Opus, Google Gemini, Meta Llama, xAI Grok), multi-agent systems,
+  agent orchestration, tool use/function calling, MCP, LangGraph, embeddings/vector search, RAG,
+  AI evals and guardrails, contextual engineering, prompt engineering, AI governance,
+  human-in-the-loop systems, Computer Vision, AI-Augmented Workflows (Claude Code, Cursor,
+  GitHub Copilot, NotebookLM), OpenClaw.
+Languages & Web: Python, Golang, Java (J2EE), C#, C++, JavaScript, React.js, Perl, XML, HTML.
+Cloud, Containers, & IaC: Amazon Web Services (AWS), Microsoft Azure, Google Cloud Platform (GCP),
+  Kubernetes, Docker, Service Mesh (Istio), Infrastructure as Code (Terraform, Ansible, Azure Bicep,
+  ARM Templates).
+Data, Architecture & Security: SQL, NoSQL, Kafka, Azure Cosmos DB, Power BI, RESTful APIs, HTTP,
+  SOAP, Observability, IaaS, PaaS, SaaS, RBAC, IAM, OpenID Connect, OAuth 2.0, ERP (SAP, JDE).
+Operating Systems: Linux OS and kernel, iOS (iPhone and iPad), Android, macOS, Windows.

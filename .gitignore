@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Agent runtime data
+job_search.db
+results/
+logs/
+
+# Secrets
+.env
+
+# Editor
+.DS_Store
+*.swp
+*.swo
