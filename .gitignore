@@ -8,7 +8,7 @@ build/
 
 # Agent runtime data
 job_search.db
-results/
+results/jobs_*.md
 logs/
 
 # Secrets
