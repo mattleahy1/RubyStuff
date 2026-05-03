@@ -1,0 +1,112 @@
+name: Daily Job Search
+
+on:
+  schedule:
+    - cron: '0 15 * * 1-5'  # 7 AM PST Mon–Fri (15:00 UTC)
+  workflow_dispatch:          # Also allows manual trigger from GitHub UI / phone
+
+permissions:
+  contents: write   # to commit seen_jobs.json
+  issues: write     # to create result issues
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run job search
+        id: search
+        run: |
+          python fetch_jobs.py \
+            --output results/latest_raw.json \
+            --seen results/seen_jobs.json \
+            --update-seen
+          NEW_COUNT=$(python -c "import json; d=json.load(open('results/latest_raw.json')); print(d['new_count'])")
+          echo "new_count=$NEW_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Issue with new listings
+        if: steps.search.outputs.new_count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'PYEOF'
+          import json, subprocess, sys
+          from datetime import datetime
+
+          with open("results/latest_raw.json") as f:
+              data = json.load(f)
+
+          listings = data.get("listings", [])
+          if not listings:
+              sys.exit(0)
+
+          date_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+          lines = [
+              f"# Job Search Results — {date_str}",
+              "",
+              f"**{len(listings)} new listings** found matching VP/SVP/CTO/Director-level, West Coast or Remote.",
+              "",
+              "> Open Claude Code and type `/job-search` to get AI scoring and analysis of these listings.",
+              "",
+              "---",
+              "",
+          ]
+
+          for job in listings:
+              remote_tag = " 🌐 Remote" if job.get("is_remote") else ""
+              lines += [
+                  f"### {job['title']}",
+                  f"**{job['company']}** · {job['location']}{remote_tag}",
+                  f"[View listing]({job['url']})",
+                  "",
+              ]
+
+          body = "\n".join(lines)
+          title = f"Job Search: {len(listings)} new listings — {date_str}"
+
+          result = subprocess.run(
+              ["gh", "issue", "create",
+               "--title", title,
+               "--body", body,
+               "--label", "job-search"],
+              capture_output=True, text=True
+          )
+          if result.returncode != 0:
+              # Label might not exist yet — create it and retry
+              subprocess.run(
+                  ["gh", "label", "create", "job-search",
+                   "--color", "0075ca", "--description", "Daily job search results"],
+                  capture_output=True
+              )
+              subprocess.run(
+                  ["gh", "issue", "create",
+                   "--title", title,
+                   "--body", body,
+                   "--label", "job-search"]
+              )
+          PYEOF
+
+      - name: No new listings notice
+        if: steps.search.outputs.new_count == '0'
+        run: echo "No new listings found today — all previously seen."
+
+      - name: Commit updated seen_jobs.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/seen_jobs.json results/latest_raw.json
+          git diff --staged --quiet || git commit -m "chore: update job search seen list $(date +%Y-%m-%d) [skip ci]"
+          git push
