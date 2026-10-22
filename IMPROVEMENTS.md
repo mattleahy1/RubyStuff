@@ -117,3 +117,123 @@ Play: open `index.html` on your phone (or through htmlpreview.github.io).
 ## Extras
 99. Add-to-Home-Screen support: generated app icon, full-screen launch, and a one-time tip on iPhone.
 100. Keeps the screen awake while playing; also works with a keyboard (arrows / A-D, Space, P) and Bluetooth game controllers.
+
+---
+
+# Round 2: 100 More Improvements (101–200)
+
+## Game modes and power-ups
+101. New game mode menu with six modes, each showing your best score.
+102. **Plus** mode: power-ups, combos and wave bonuses.
+103. Power-up capsules (lettered, colour-coded) fall from every mystery ship you shoot, and occasionally from invaders.
+104. **R**: rapid fire (two shots on screen, faster bullets) for 10 seconds.
+105. **S**: three-way spread shot for 10 seconds.
+106. **L**: a laser that pierces straight through invaders and bombs.
+107. **T**: time warp, which slows invaders, bombs and the mystery ship to half speed.
+108. **H**: rebuilds all four shields.
+109. **+**: rare extra life.
+110. Power-up timer bar in the bottom row.
+111. Combo multiplier: every 8 hits in a row raises it (up to x4). A miss resets it.
+112. **Hardcore** mode: one life, fast bombs, no bonus ship.
+113. **Time Attack** mode: a 2-minute clock and endless waves.
+114. **Daily Challenge**: a seeded game that plays out the same for everyone on a given day.
+115. **Practice** mode: invaders never shoot, and nothing is recorded.
+116. Separate top-10 high-score tables for each mode.
+
+## Gameplay
+117. The fleet freezes for a split second when you hit an invader, like the arcade.
+118. Arcade quirk: the last invader moves 3 pixels right but only 2 left.
+119. Danger warning: a pulsing red line, and the ground turns red, when invaders are 4 drops from landing.
+120. A danger alarm sounds while they're that close.
+121. Wave-end bonuses in Plus, Time Attack and Daily: up to +500 for accuracy and +500 for not dying.
+122. A wave-clear summary showing your accuracy and bonuses.
+123. Endless difficulty curve: bombs keep getting faster after wave 8.
+124. In Neon style, invaders glow redder as they get closer to the ground.
+125. Time Attack: +10 seconds for every wave cleared.
+126. Time Attack: dying, or an invasion, costs 10 seconds instead of ending the game.
+127. **Continue**: your game is saved when you pause, switch apps, or every 10 seconds, so you can pick up where you left off even if iPhone closes the tab.
+128. The score counter rolls up smoothly.
+129. A "NEW HI-SCORE!" alert the moment you pass your best.
+130. Coaching hints over the controls in your first game.
+131. Very quick taps on FIRE are never lost, even if they're shorter than one frame.
+
+## Controls
+132. New **Trackpad** control: swipe anywhere to nudge the cannon.
+133. New **Tilt** control: steer by tilting the phone (asks for motion permission on iPhone).
+134. Tilt/swipe sensitivity setting.
+135. Tilt re-centres when you start or resume, plus a RECENTER TILT button in the pause menu.
+136. Tap the playfield to fire (button and tilt modes).
+137. Button size setting (small / medium / large).
+138. Button look setting (solid / faded / ghost).
+139. A tiny vibration tick when you press a control (Android).
+140. Controller rumble when you're hit (supported controllers).
+141. Controller menu navigation: D-pad, A to select, B to go back, Start to pause.
+142. Keyboard menu navigation: arrow keys, Enter and Esc, with a visible focus outline.
+143. The Android or browser back button pauses the game and closes menus instead of leaving the page.
+
+## Visuals
+144. Invaders flash white for an instant when hit.
+145. Muzzle flash when you fire.
+146. Glowing shot trails, and a wider glowing laser beam.
+147. Debris flies off shields when they're hit.
+148. Dust kicks up where bombs hit the ground.
+149. The mystery ship's lights blink.
+150. A shockwave ring when the mystery ship explodes.
+151. The screen flashes red when you're hit.
+152. Your cannon bursts into particles when destroyed.
+153. The lives counter blinks red on your last life.
+154. Shooting stars streak across the starfield.
+155. A soft nebula behind the stars in Neon style.
+156. The title logo shimmers between green and cyan.
+157. Attract mode: an AI pilot plays the game behind the title screen.
+158. "Sharp pixels" option: each game pixel is a whole number of screen pixels.
+159. High-contrast graphics style.
+160. Colour-blind-safe graphics style (Okabe–Ito colours).
+161. Confetti when you set a new high score.
+162. Shields build up from the ground at the start of each wave.
+163. Battery saver option: draws 30 frames per second instead of 60.
+
+## Sound
+164. Stereo sound: shots, explosions and the mystery ship come from where they happen.
+165. The mystery ship's siren pans across as it flies.
+166. A compressor stops the sound distorting when lots happens at once.
+167. Separate volume sliders for effects and music.
+168. Game-over jingle.
+169. New-high-score fanfare.
+170. Power-up and power-down sounds.
+171. 3-2-1 countdown beeps when resuming, and a "go" chirp at each wave start.
+172. Combo-up sound that rises in pitch.
+173. Time Attack clock ticks in the final 10 seconds.
+174. Award-unlocked chime.
+175. The marching beat gets deeper and louder in the danger zone.
+176. Laser sound effect.
+
+## Progression
+177. 20 awards to unlock.
+178. Awards screen showing which you have.
+179. Award-unlocked banner during play.
+180. Arcade-style 3-letter initials entry for top-10 scores.
+181. Your initials are remembered for next time.
+182. Share your score (iPhone share sheet, or copies a message).
+183. Pilot ranks from Cadet to Admiral, based on invaders destroyed.
+184. Rank progress on the title screen, and "PROMOTED!" on the game-over screen.
+185. 12 lifetime stats, including total score, best streak, power-ups, bombs shot and longest game.
+186. Daily Challenge streak counter and today's best.
+187. The title screen shows the selected mode and your best score in it.
+188. Save-data versioning, so old high scores carry over (into the Classic table).
+
+## Accessibility
+189. Large text option for menus.
+190. Reduce-flashing option (no red flash, blinking or shake).
+191. Screen-reader announcements for waves, lives, power-ups, awards and game over.
+192. 75% speed assist option (those games aren't ranked).
+193. The pause screen shows your mode, score, wave and lives.
+194. Quitting a game in progress needs a second tap to confirm.
+
+## Under the hood
+195. Recovers if iPhone drops the game's graphics memory.
+196. Adaptive quality: glow switches off automatically if the phone struggles.
+197. Friendly error screen with a restart button if something goes badly wrong.
+198. Export/import a save code, to move scores into the home-screen app (iPhone keeps its data separate).
+199. Settings grouped into sections, with reset-to-defaults and a version number.
+200. An automated test suite (`node tests/e2e.js`) that plays the game on emulated iPhones and Android phones.
