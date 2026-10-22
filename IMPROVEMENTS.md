@@ -136,7 +136,7 @@ Play: open `index.html` on your phone (or through htmlpreview.github.io).
 111. Combo multiplier: every 8 hits in a row raises it (up to x4). A miss resets it.
 112. **Hardcore** mode: one life, fast bombs, no bonus ship.
 113. **Time Attack** mode: a 2-minute clock and endless waves.
-114. **Daily Challenge**: a seeded game that plays out the same for everyone on a given day.
+114. **Daily Challenge**: a seeded game that plays out the same for everyone who plays on that date, with fixed Normal difficulty and 3 lives so scores are comparable.
 115. **Practice** mode: invaders never shoot, and nothing is recorded.
 116. Separate top-10 high-score tables for each mode.
 
@@ -147,7 +147,7 @@ Play: open `index.html` on your phone (or through htmlpreview.github.io).
 120. A danger alarm sounds while they're that close.
 121. Wave-end bonuses in Plus, Time Attack and Daily: up to +500 for accuracy and +500 for not dying.
 122. A wave-clear summary showing your accuracy and bonuses.
-123. Endless difficulty curve: bombs keep getting faster after wave 8.
+123. Endless difficulty curve: bombs get a little faster every wave after wave 8.
 124. In Neon style, invaders glow redder as they get closer to the ground.
 125. Time Attack: +10 seconds for every wave cleared.
 126. Time Attack: dying, or an invasion, costs 10 seconds instead of ending the game.
@@ -161,8 +161,8 @@ Play: open `index.html` on your phone (or through htmlpreview.github.io).
 132. New **Trackpad** control: swipe anywhere to nudge the cannon.
 133. New **Tilt** control: steer by tilting the phone (asks for motion permission on iPhone).
 134. Tilt/swipe sensitivity setting.
-135. Tilt re-centres when you start or resume, plus a RECENTER TILT button in the pause menu.
-136. Tap the playfield to fire (button and tilt modes).
+135. Tilt re-centres when you start or resume, plus a RECENTER TILT button in the pause menu. The motion permission is only requested when you actually play with tilt.
+136. Tap the playfield to fire (button and tilt modes). Touches that just miss a button count as that button.
 137. Button size setting (small / medium / large).
 138. Button look setting (solid / faded / ghost).
 139. A tiny vibration tick when you press a control (Android).
@@ -191,7 +191,7 @@ Play: open `index.html` on your phone (or through htmlpreview.github.io).
 160. Colour-blind-safe graphics style (Okabe–Ito colours).
 161. Confetti when you set a new high score.
 162. Shields build up from the ground at the start of each wave.
-163. Battery saver option: draws 30 frames per second instead of 60.
+163. Battery saver option: caps drawing at 30 frames per second.
 
 ## Sound
 164. Stereo sound: shots, explosions and the mystery ship come from where they happen.
@@ -224,16 +224,30 @@ Play: open `index.html` on your phone (or through htmlpreview.github.io).
 
 ## Accessibility
 189. Large text option for menus.
-190. Reduce-flashing option (no red flash, blinking or shake).
+190. Reduce-flashing option: no red flash, blinking, strobing or shake (your cannon dims instead of blinking after a respawn).
 191. Screen-reader announcements for waves, lives, power-ups, awards and game over.
 192. 75% speed assist option (those games aren't ranked).
 193. The pause screen shows your mode, score, wave and lives.
 194. Quitting a game in progress needs a second tap to confirm.
 
 ## Under the hood
-195. Recovers if iPhone drops the game's graphics memory.
+195. If the browser restores a lost game screen (it can happen on Android under memory pressure), the game rebuilds its graphics automatically.
 196. Adaptive quality: glow switches off automatically if the phone struggles.
 197. Friendly error screen with a restart button if something goes badly wrong.
 198. Export/import a save code, to move scores into the home-screen app (iPhone keeps its data separate).
 199. Settings grouped into sections, with reset-to-defaults and a version number.
 200. An automated test suite (`node tests/e2e.js`) that plays the game on emulated iPhones and Android phones.
+
+## After code review
+Five review agents checked round 2 from different angles (gameplay rules, menus and game flow, real-phone behaviour, the claims above, and robustness). Fixed as a result:
+- A slow frame at game over could run extra steps on the finished game, changing the saved score or skipping the initials screen.
+- Time Attack invasions cost 20 seconds instead of 10. A leftover mystery ship stayed on screen after a wave reset.
+- Daily Challenge power-ups drifted apart between players, and it used each player's own difficulty setting.
+- On smaller iPhones the pause button overlapped the → button. It now sits between the arrows and FIRE.
+- Touches just outside an arrow fired instead of moving.
+- Double-tapping pause could hit RESTART (it now needs a second tap), and the menus ignore taps for a moment after they appear.
+- Enter or controller Start on the title screen threw away a saved game. They now continue it.
+- Importing a save code lost your stats. A malicious or corrupt save code could break the game or run script; all saved data is now checked field by field.
+- Cycling through the CONTROLS setting triggered the iPhone motion-permission popup.
+- Smaller fixes: no bonus ship in modes without lives; zero scores aren't recorded; a controller can enter initials, with a visible focus ring; the error screen now appears reliably; the glow no longer switches off on 30 Hz Low Power Mode screens.
+- 23 new regression checks (112 in total).

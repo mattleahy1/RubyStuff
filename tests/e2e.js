@@ -449,6 +449,75 @@ const ev = (page, fn, arg) => page.evaluate(fn, arg);
   await ctx.close();
 
   // ════════════════════════════════════════════════════════════════════════
+  console.log('\n— Regression checks: layout, touch and save data —');
+  for (const [w, h, size, lefty] of [[375, 553, 'm', false], [375, 553, 'l', false], [320, 460, 'm', false], [320, 460, 'l', true], [390, 664, 'l', false], [360, 560, 'l', false]]) {
+    const c = await browser.newContext({ ...devices['iPhone 13'], viewport: { width: w, height: h } });
+    const p = await c.newPage(); watch(p, `layout ${w}x${h}`);
+    await p.goto(URL); await sleep(300);
+    await p.evaluate(([sz, lf]) => { __SI.settings.btnSize = sz; __SI.settings.lefty = lf; __SI.applySettings(); __SI.startGame('classic'); }, [size, lefty]);
+    await sleep(200);
+    const boxes = await p.evaluate(() => ['bP', 'bL', 'bR', 'bF'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; }));
+    const ov = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+    const bad = boxes.slice(1).some(b => ov(boxes[0], b));
+    const inside = boxes.every(b => b[0] >= 0 && b[2] <= w && b[3] <= h);
+    check(!bad && inside, `${w}x${h} ${size.toUpperCase()}${lefty ? ' left-handed' : ''}: pause button never overlaps the controls`);
+    await c.close();
+  }
+  {
+    const c = await browser.newContext({ ...devices['iPhone 13'] });
+    const p = await c.newPage(); watch(p, 'nearmiss');
+    await p.goto(URL); await sleep(300);
+    await p.evaluate(() => { __SI.settings.btnSize = 'm'; __SI.settings.lefty = false; __SI.applySettings(); __SI.startGame('plus'); }); await sleep(2000);
+    const cd = await c.newCDPSession(p);
+    const l = await p.locator('#bL').boundingBox(), r = await p.locator('#bR').boundingBox();
+    await p.evaluate(() => { __SI.G.player.invuln = 9999; __SI.G.player.x = 100; });
+    const s0 = await p.evaluate(() => __SI.G.shotsFired);
+    const gx = (l.x + l.width + r.x) / 2, gy = l.y + 4;           // top of the gap between the arrows (outside both circles)
+    await touch(cd, 'touchStart', gx, gy);
+    await sleep(400);
+    await touch(cd, 'touchMove', r.x + r.width / 2, r.y + r.height / 2);
+    await sleep(500);
+    await touch(cd, 'touchEnd', 0, 0);
+    const res = await p.evaluate(() => ({ x: __SI.G.player.x, shots: __SI.G.shotsFired }));
+    check(res.shots === s0, 'a touch that misses the arrows does not fire');
+    check(res.x > 100, `...and sliding onto an arrow still moves the cannon (x=${res.x.toFixed(1)})`);
+    await c.close();
+  }
+  {
+    const c = await browser.newContext({ ...devices['iPhone 13'] });
+    const p = await c.newPage(); watch(p, 'badsave');
+    await p.goto(URL); await sleep(300);
+    const evil = 'SI2:' + Buffer.from(JSON.stringify({
+      'si.scores': JSON.stringify({ classic: [{ s: '<img src=x onerror=window.__pwn=1>', w: 1, d: 1, n: '<b>' }, null, { s: 5000, w: 3, d: 2, n: 'ZZ<' }] }),
+      'si.daily': JSON.stringify({ streak: '<img src=x onerror=window.__pwn=2>', last: 'x' }),
+      'si.settings': JSON.stringify({ volume: 'loud', style: 'evil', mode: 'constructor', controls: 'tilt' }),
+      'si.stats': JSON.stringify({ kills: 3500, games: 40, bogus: '<x>' }),
+      'si.evil': '"should not be imported"',
+    })).toString('base64');
+    p.once('dialog', d => d.accept(evil));
+    await p.evaluate(() => { __SI.toTitle(); }); await p.evaluate(() => document.querySelector('[data-act=settings]').click()); await sleep(200);
+    await p.locator('[data-act=importSave]').click(); await sleep(1600);
+    await p.evaluate(() => document.querySelector('#sTitle [data-act=modes]').click()); await sleep(200);
+    const r = await p.evaluate(() => ({ pwn: window.__pwn, best: __SI.scores.classic, set: { v: __SI.settings.volume, st: __SI.settings.style, m: __SI.settings.mode, c: __SI.settings.controls }, kills: __SI.stats.kills, evil: localStorage.getItem('si.evil') }));
+    check(r.pwn === undefined, 'a malicious save code cannot run script');
+    check(r.best.length === 1 && r.best[0].s === 5000 && r.best[0].n === 'ZZA', 'bad score entries are dropped, good ones kept and cleaned');
+    check(r.set.v === 0.7 && r.set.st === 'neon' && r.set.m === 'classic' && r.set.c === 'tilt', 'invalid settings fall back to defaults; valid ones kept');
+    check(r.kills === 3500, 'imported lifetime stats survive the reload (rank kept)');
+    check(r.evil === null, 'unknown keys in a save code are ignored');
+    await p.evaluate(() => { localStorage.setItem('si.save', JSON.stringify({ v: 2, mode: 'classic', aliens: [1, 2] })); __SI.toTitle(); });
+    check(await p.locator('#contBtn').isHidden(), 'a broken saved game is not offered as CONTINUE');
+    await c.close();
+  }
+  {
+    const c = await browser.newContext({ ...devices['iPhone 13'] });
+    const p = await c.newPage(); watch(p, 'daily');
+    await p.goto(URL); await sleep(300);
+    const d = await p.evaluate(() => { __SI.settings.difficulty = 'easy'; __SI.startGame('daily'); return { diff: __SI.G.diffKey, lives: __SI.G.lives }; });
+    check(d.diff === 'normal' && d.lives === 3, 'daily challenge ignores your difficulty setting (same for everyone)');
+    await c.close();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
   console.log('\n— Other phones —');
   for (const name of ['iPhone SE', 'iPhone 15 Pro Max', 'Pixel 7']) {
     const c = await browser.newContext({ ...devices[name] });

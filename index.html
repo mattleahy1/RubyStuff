@@ -102,7 +102,8 @@
   .btn small { display: block; font-size: 8px; margin-top: 6px; opacity: .75; letter-spacing: 0; }
   .btn:active { transform: scale(.97); background: rgba(255,255,255,.14); }
   .btn:focus { outline: none; }
-  .btn:focus-visible, .tab:focus-visible, input:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  .btn:focus-visible, .tab:focus-visible, input:focus-visible,
+  body.padnav .btn:focus, body.padnav .tab:focus, body.padnav input:focus { outline: 3px solid var(--yellow); outline-offset: 2px; }
   .btn[disabled] { opacity: .3; }
   .btn.primary { color: var(--green); font-size: 17px; padding: 18px 10px; animation: pulse 1.6s ease-in-out infinite; }
   .btn.danger { color: var(--red); }
@@ -413,7 +414,7 @@ const MODES = {
   plus:     { name: 'PLUS', short: 'PLUS', desc: 'Power-ups, combos and wave bonuses.', ranked: true, powerups: true, combo: true, bonus: true },
   hardcore: { name: 'HARDCORE', short: 'HARD', desc: 'One life. Fast bombs. No bonus ship.', ranked: true, lives: 1, noBonusShip: true, diff: 'hard' },
   time:     { name: 'TIME ATTACK', short: 'TIME', desc: 'Two minutes, endless waves. Dying costs 10 seconds.', ranked: true, powerups: true, combo: true, bonus: true, timer: 7200, infinite: true },
-  daily:    { name: 'DAILY', short: 'DAILY', desc: 'The same game for everyone today, with power-ups.', ranked: true, powerups: true, combo: true, bonus: true, seeded: true },
+  daily:    { name: 'DAILY', short: 'DAILY', desc: 'The same game for everyone today, with power-ups.', ranked: true, powerups: true, combo: true, bonus: true, seeded: true, diff: 'normal', lives: 3 },
   practice: { name: 'PRACTICE', short: 'PRACTICE', desc: 'Invaders never shoot. Nothing is recorded.', ranked: false, noBombs: true },
 };
 const MODE_ORDER = ['classic', 'plus', 'hardcore', 'time', 'daily', 'practice'];
@@ -531,16 +532,59 @@ const DEFAULT_SETTINGS = {
   style: 'neon', stars: true, crt: false, shake: !reducedMotion, noflash: false, sharp: false, large: false, fps30: false, fps: false,
   sound: true, music: true, vibrate: true, volume: 0.7, musicVol: 0.6,
 };
-const settings = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
-if (!MODES[settings.mode]) settings.mode = 'classic';
-let scores = store.get('scores', {});
-if (!scores || typeof scores !== 'object' || Array.isArray(scores)) scores = { classic: Array.isArray(scores) ? scores : [] };
-for (const m of MODE_ORDER) if (!Array.isArray(scores[m])) scores[m] = [];
+// Everything read from storage (or an imported save code) is checked field by field,
+// so old, corrupt or hand-edited data can never break the game or inject markup.
+const BOOL = [true, false];
+const SETTING_VALUES = {
+  controls: ['buttons', 'drag', 'pad', 'tilt'], autofire: BOOL, lefty: BOOL, btnSize: ['s', 'm', 'l'], btnAlpha: [1, 0.7, 0.4],
+  sens: ['low', 'med', 'high'], difficulty: ['easy', 'normal', 'hard'], speed: [1, 0.75], mode: MODE_ORDER,
+  style: ['neon', 'classic', 'mono', 'contrast', 'cb'], stars: BOOL, crt: BOOL, shake: BOOL, noflash: BOOL, sharp: BOOL,
+  large: BOOL, fps30: BOOL, fps: BOOL, sound: BOOL, music: BOOL, vibrate: BOOL,
+};
+const num = (v, d) => (typeof v === 'number' && Number.isFinite(v)) ? v : d;
+const cleanInitials = v => String(v == null ? '' : v).toUpperCase().replace(/[^A-Z0-9 ]/g, '').padEnd(3, 'A').slice(0, 3);
+const isDay = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+function cleanSettings(raw) {
+  const out = Object.assign({}, DEFAULT_SETTINGS);
+  if (raw && typeof raw === 'object') for (const k in DEFAULT_SETTINGS) {
+    if (!(k in raw)) continue;
+    if (SETTING_VALUES[k]) { if (SETTING_VALUES[k].includes(raw[k])) out[k] = raw[k]; }
+    else out[k] = Math.min(1, Math.max(0, num(raw[k], DEFAULT_SETTINGS[k])));   // volumes
+  }
+  return out;
+}
+function cleanScores(raw) {
+  const out = {};
+  for (const m of MODE_ORDER) {
+    const list = raw && typeof raw === 'object' && Array.isArray(raw[m]) ? raw[m] : [];
+    out[m] = list.filter(e => e && typeof e === 'object' && Number.isFinite(e.s) && e.s > 0)
+      .map(e => ({ s: Math.floor(e.s), w: Math.min(9999, Math.max(1, Math.floor(num(e.w, 1)))), d: num(e.d, 0), n: cleanInitials(e.n) }))
+      .sort((a, b) => b.s - a.s || a.d - b.d).slice(0, 10);
+  }
+  return out;
+}
 const STAT_KEYS = { games: 0, kills: 0, shots: 0, hits: 0, ufos: 0, bestWave: 0, timeSec: 0, totalScore: 0, bestCombo: 0, powerups: 0, longestSec: 0, wavesCleared: 0, bombsShot: 0 };
-const stats = Object.assign({}, STAT_KEYS, store.get('stats', {}));
-let achs = store.get('ach', {}) || {};
-const daily = Object.assign({ last: '', streak: 0, bestDate: '', best: 0 }, store.get('daily', {}));
-let initials = String(store.get('initials', 'AAA')).toUpperCase().padEnd(3, 'A').slice(0, 3);
+function cleanStats(raw) {
+  const out = Object.assign({}, STAT_KEYS);
+  if (raw && typeof raw === 'object') for (const k in STAT_KEYS) out[k] = Math.max(0, Math.floor(num(raw[k], 0)));
+  return out;
+}
+function cleanAchs(raw) {
+  const out = {};
+  if (raw && typeof raw === 'object') for (const [id] of ACH) if (Number.isFinite(raw[id])) out[id] = raw[id];
+  return out;
+}
+function cleanDaily(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return { last: isDay(r.last) ? r.last : '', bestDate: isDay(r.bestDate) ? r.bestDate : '',
+           streak: Math.max(0, Math.floor(num(r.streak, 0))), best: Math.max(0, Math.floor(num(r.best, 0))) };
+}
+const settings = cleanSettings(store.get('settings', {}));
+let scores = cleanScores(store.get('scores', {}));
+const stats = cleanStats(store.get('stats', {}));
+let achs = cleanAchs(store.get('ach', {}));
+const daily = cleanDaily(store.get('daily', {}));
+let initials = cleanInitials(store.get('initials', 'AAA'));
 const saveSettings = () => store.set('settings', settings);
 const best = m => (scores[m] && scores[m][0]) ? scores[m][0].s : 0;
 const hiScore = () => Math.max(best(G && !G.demo ? G.mode : settings.mode), G && !G.demo ? G.score : 0);
@@ -751,7 +795,7 @@ const Sound = (() => {
       marchIdx = (marchIdx + 1) % 4;
     },
     resetMarch() { marchIdx = 0; },
-    alarm()   { if (S.quiet || !settings.music) return; tone(700, 'square', 0.09, 0.06, 0, 0, null, 'music'); tone(520, 'square', 0.09, 0.06, 0.11, 0, null, 'music'); },
+    alarm()   { if (S.quiet) return; tone(700, 'square', 0.09, 0.06); tone(520, 'square', 0.09, 0.06, 0.11); },
     ufoHit(x) { [500, 650, 820, 1100].forEach((f, i) => tone(f, 'square', 0.08, 0.18, i * 0.065, 0, px(x))); },
     extraLife() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 'square', 0.09, 0.14, i * 0.07)); },
     waveClear() { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 'triangle', 0.16, 0.25, i * 0.1)); },
@@ -1210,7 +1254,7 @@ function tryFireBomb() {
 }
 function updateBombs() {
   const warp = G.power && G.power.k === 'T' ? 0.5 : 1;
-  const late = 1 + Math.min(0.4, Math.max(0, G.wave - 8) * 0.03);      // endless difficulty curve after wave 8
+  const late = 1 + 0.6 * (1 - Math.exp(-Math.max(0, G.wave - 8) / 12));   // endless curve: a little faster every wave after 8
   const spd = (G.alive <= 8 ? 1.7 : 1.25) * G.diff.bombSpd * late * warp;
   const P = G.player;
   for (let i = G.bombs.length - 1; i >= 0; i--) {
@@ -1414,6 +1458,18 @@ function refreshButtons() {
   for (const k in btnEls) btnEls[k].classList.toggle('on', on[k]);
 }
 function clearInputs() { input.ptrs.clear(); input.kLeft = input.kRight = input.kFire = false; input.padDx = 0; input.firePending = 0; refreshButtons(); }
+function inPlayfield(x, y) { return x >= L.offX && x <= L.offX + W * L.s && y >= L.offY && y <= L.offY + H * L.s; }
+function nearCtrl(x, y) {                 // forgiving hit test: within 18px of a round button counts
+  let best = null, bd = 18;
+  for (const k in btnEls) {
+    const el = btnEls[k];
+    if (el.classList.contains('hidden')) continue;
+    const r = el.getBoundingClientRect();
+    const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) - r.width / 2;
+    if (d < bd) { bd = d; best = k; }
+  }
+  return best;
+}
 function ctrlAt(x, y) {
   const el = document.elementFromPoint(x, y);
   const c = el && el.closest ? el.closest('[data-ctrl]') : null;
@@ -1431,21 +1487,23 @@ window.addEventListener('popstate', () => {
 });
 window.addEventListener('pointerdown', e => {
   Sound.unlock(); armHistory();
+  document.body.classList.remove('padnav');
   if (state !== 'playing') return;
   if (e.target.closest && e.target.closest('#bP')) return;
   const mode = settings.controls;
-  const c = ctrlAt(e.clientX, e.clientY);
+  const c = ctrlAt(e.clientX, e.clientY) || nearCtrl(e.clientX, e.clientY);
   const onField = e.target === cv || (e.target.closest && e.target.closest('#controls'));
+  const tapFire = e.target === cv && inPlayfield(e.clientX, e.clientY);              // tap the playfield to fire
   let kind = null;
-  if (mode === 'buttons') kind = c || (e.target === cv ? 'fire' : null);           // tap the playfield to fire
+  if (mode === 'buttons') kind = c || (tapFire ? 'fire' : e.target === cv ? 'none' : null);   // 'none' can still slide onto an arrow
   else if (mode === 'drag') kind = onField ? 'drag' : null;
   else if (mode === 'pad') kind = c === 'fire' ? 'fire' : onField ? 'pad' : null;
-  else if (mode === 'tilt') kind = c === 'fire' || e.target === cv ? 'fire' : null;
+  else if (mode === 'tilt') kind = c === 'fire' || tapFire ? 'fire' : null;
   if (!kind) return;
   input.ptrs.set(e.pointerId, { c: kind, x: e.clientX });
   if (kind === 'fire') input.firePending = 12;                  // never lose a tap shorter than one frame
   e.preventDefault();
-  if (kind !== 'drag' && kind !== 'pad') buzz(5);
+  if (kind === 'left' || kind === 'right' || kind === 'fire') buzz(5);
   refreshButtons();
 }, { passive: false });
 window.addEventListener('pointermove', e => {
@@ -1453,8 +1511,8 @@ window.addEventListener('pointermove', e => {
   if (!p) return;
   if (p.c === 'pad') input.padDx += e.clientX - p.x;
   p.x = e.clientX;
-  if (p.c === 'left' || p.c === 'right') {             // slide between arrows to change direction
-    const c = ctrlAt(e.clientX, e.clientY);
+  if (p.c === 'left' || p.c === 'right' || p.c === 'none') {   // slide between arrows to change direction
+    const c = ctrlAt(e.clientX, e.clientY) || nearCtrl(e.clientX, e.clientY);
     if ((c === 'left' || c === 'right') && c !== p.c) { p.c = c; refreshButtons(); }
   }
 });
@@ -1559,6 +1617,7 @@ function pollGamepad() {
     return;
   }
   if (current && state !== 'playing') {
+    if (edge('up') || edge('down') || edge('a')) document.body.classList.add('padnav');
     if (edge('up')) moveFocus(-1);
     if (edge('down')) moveFocus(1);
     if (edge('a')) { const el = document.activeElement; if (el && focusables().includes(el)) el.click(); else moveFocus(0); }
@@ -1607,28 +1666,36 @@ function layout() {
   const SF = SIZE_F[settings.btnSize] || 1;
   const bP = document.getElementById('bP'), hint = document.getElementById('dragHint');
   const sharp = v => settings.sharp ? Math.max(1 / dpr, Math.floor(v * dpr) / dpr) : v;     // whole device pixels per game pixel
-  let s, offX, offY, rects, hintR;
+  const snap = v => settings.sharp ? Math.round(v * dpr) / dpr : v;
+  let s, offX, offY, rects, hintR, pRect;
   if (!land) {
     const ctrlMin = clamp(ah * 0.2, 120, 200);
     s = sharp(Math.min(aw / W, (ah - ctrlMin) / H));
-    offX = ax + (aw - W * s) / 2;
-    offY = ay + Math.min(8, Math.max(0, ah - ctrlMin - H * s) / 2);
+    offX = snap(ax + (aw - W * s) / 2);
+    offY = snap(ay + Math.min(8, Math.max(0, ah - ctrlMin - H * s) / 2));
     const top = offY + H * s, ch = ay + ah - top;
     let size = clamp(Math.min(ch * 0.6, aw * 0.21), 58, 92) * SF;
     size = Math.min(size, (aw - 60) / 3.15, ch - 20);
-    const fs = Math.round(size * 1.1), cy = top + ch / 2;
+    let fs = Math.round(size * 1.1);
+    const cy = top + ch / 2;
+    // The pause button goes in the gap between the arrows and FIRE; if there's no room,
+    // it sits above the arrows and the arrows shrink so the two never overlap.
+    const gapFor = sz => aw - 14 - Math.round(sz * 1.1) - (14 + sz + 14 + sz);
+    const inGap = gapFor(size) >= 56;
+    if (!inGap) { size = Math.max(44, Math.min(size, ch - 112)); fs = Math.round(size * 1.1); }
     rects = {
       left:  [ax + 14, cy - size / 2, size, size],
       right: [ax + 14 + size + 14, cy - size / 2, size, size],
       fire:  [ax + aw - 14 - fs, cy - fs / 2, fs, fs],
     };
-    place(bP, ax + aw / 2 - 22, top + 6, 44, 44);
+    const gx = rects.right[0] + size, gap = rects.fire[0] - gx;
+    pRect = inGap ? [gx + (gap - 44) / 2, cy - 22, 44, 44] : [ax + aw / 2 - 22, top + 6, 44, 44];
     hintR = settings.controls === 'drag' ? [ax, cy - 20, aw, 40] : [ax + 10, cy - 20, aw - fs - 50, 40];
   } else {
     const side = clamp(aw * 0.18, 120, 230);
     s = sharp(Math.min((aw - 2 * side) / W, ah / H));
-    offX = ax + (aw - W * s) / 2;
-    offY = ay + (ah - H * s) / 2;
+    offX = snap(ax + (aw - W * s) / 2);
+    offY = snap(ay + (ah - H * s) / 2);
     const pw = offX - ax;
     let size = clamp(Math.min((pw - 30) / 2, ah * 0.26), 52, 90) * SF;
     size = Math.min(size, (pw - 30) / 2);
@@ -1639,12 +1706,13 @@ function layout() {
       right: [ax + 20 + size, by, size, size],
       fire:  [offX + W * s + (pw - fs) / 2, ay + ah - fs - 18, fs, fs],
     };
-    place(bP, ax + 10, ay + 10, 44, 44);
+    pRect = [ax + 10, ay + 10, 44, 44];
     hintR = [ax, ay + ah / 2 - 30, pw, 60];
   }
   const mirror = r => { r[0] = cssW - r[0] - r[2]; };
-  if (settings.lefty) { for (const k in rects) mirror(rects[k]); if (settings.controls !== 'drag') mirror(hintR); }
+  if (settings.lefty) { for (const k in rects) mirror(rects[k]); mirror(pRect); if (settings.controls !== 'drag') mirror(hintR); }
   for (const k in rects) place(btnEls[k], ...rects[k]);
+  place(bP, ...pRect);
   btnEls.fire.style.fontSize = Math.round(rects.fire[2] / 7) + 'px';
   for (const k in btnEls) btnEls[k].style.opacity = settings.btnAlpha;
   place(hint, ...hintR);
@@ -1660,7 +1728,8 @@ function layout() {
   if (cm === 'buttons') { const l = rects.left, r = rects.right; const x0 = Math.min(l[0], r[0]); place(tm, x0, l[1] - 30, Math.abs(r[0] - l[0]) + l[2], 22); }
   else place(tm, hintR[0], hintR[1] - 26, hintR[2], 22);
   tm.textContent = cm === 'buttons' ? 'HOLD TO MOVE' : cm === 'drag' ? 'TOUCH AND DRAG' : cm === 'pad' ? 'SWIPE TO MOVE' : 'TILT TO MOVE';
-  place(tf, rects.fire[0] - 20, rects.fire[1] - 30, rects.fire[2] + 40, 22);
+  const tfw = Math.max(rects.fire[2] + 40, 130);
+  place(tf, clamp(rects.fire[0] + rects.fire[2] / 2 - tfw / 2, 4, cssW - tfw - 4), rects.fire[1] - 30, tfw, 22);   // kept on screen
   tf.classList.toggle('hidden', cm === 'drag');
   buildNebula();
 }
@@ -1733,12 +1802,15 @@ function render(now) {
   text('WAVE', W - 8, 3, col('hud', 3), 'right');
   text(String(G.wave), W - 8, 13, col('score', 13), 'right');
 
-  if (G.ufo) add('ufo', (G.t >> 3) & 1, G.ufo.x, UFO_Y, col('ufo', UFO_Y));
+  if (G.ufo) add('ufo', calm ? 0 : (G.t >> 3) & 1, G.ufo.x, UFO_Y, col('ufo', UFO_Y));
   for (const a of G.aliens) if (a.alive) add(a.type, a.frame, a.x, a.y, alienColor(a));
-  for (const f of G.fx) add(f.spr, 0, f.x, f.y, f.flash && f.total - f.t < f.flash ? '#ffffff' : col(f.kind, f.y));
+  for (const f of G.fx) add(f.spr, 0, f.x, f.y, f.flash && !calm && f.total - f.t < f.flash ? '#ffffff' : col(f.kind, f.y));
   for (const b of G.bombs) add(b.type, b.f, b.x, b.y, col('bomb', b.y));
   const P = G.player;
-  if (!P.dead) { if (!(P.invuln > 0 && (G.t >> 3) & 1)) add('player', 0, P.x, PLAYER_Y, col('player', PLAYER_Y)); }
+  if (!P.dead) {
+    if (P.invuln > 0 && calm) add('player', 0, P.x, PLAYER_Y, mix(col('player', PLAYER_Y), '#000000', 0.55));   // dimmed instead of blinking
+    else if (!(P.invuln > 0 && (G.t >> 3) & 1)) add('player', 0, P.x, PLAYER_Y, col('player', PLAYER_Y));
+  }
   else if (G.phaseT > 55) add('playerX', (G.t >> 2) & 1, P.x - 1, PLAYER_Y, col('player', PLAYER_Y));
   const showLives = !G.demo && !G.cfg.infinite && G.mode !== 'practice';
   const lastLife = showLives && G.lives === 1;
@@ -1885,7 +1957,13 @@ function buildAdvTable() {
 }
 function loadSave() {
   const o = store.get('save', null);
-  return o && o.v === 2 && Array.isArray(o.aliens) && MODES[o.mode] ? o : null;
+  const ok = o && typeof o === 'object' && o.v === 2 && MODE_ORDER.includes(o.mode) && DIFF.hasOwnProperty(o.diffKey) &&
+    Number.isFinite(o.score) && Number.isFinite(o.wave) && o.wave >= 1 && Number.isFinite(o.lives) &&
+    Array.isArray(o.aliens) && o.aliens.length === ROWS * COLS && o.aliens.every(a => a && Number.isFinite(a.x) && Number.isFinite(a.y) && SPR[a.type]) &&
+    Array.isArray(o.ground) && o.ground.length === W && Array.isArray(o.shields) && o.shields.length === 4 &&
+    o.shields.every(sh => sh && Number.isFinite(sh.x) && Array.isArray(sh.m) && sh.m.length === 352) &&
+    o.player && Number.isFinite(o.player.x) && Array.isArray(o.bombs) && Array.isArray(o.capsules);
+  return ok ? o : null;
 }
 function refreshTitle() {
   const m = settings.mode;
@@ -1901,11 +1979,12 @@ function refreshTitle() {
   if (sv) document.getElementById('contInfo').textContent = MODES[sv.mode].name + ' · WAVE ' + sv.wave + ' · ' + sv.score;
 }
 function renderModes() {
-  const today = dateKey();
+  const today = dateKey(), yd = new Date(); yd.setDate(yd.getDate() - 1);
+  const streak = daily.last === today || daily.last === dateKey(yd) ? daily.streak : 0;   // a missed day breaks it
   document.getElementById('modeList').innerHTML = MODE_ORDER.map(m => {
     const md = MODES[m];
     let extra = '';
-    if (m === 'daily') extra = `TODAY'S BEST ${daily.bestDate === today ? daily.best : 0} · STREAK ${daily.streak} DAY${daily.streak === 1 ? '' : 'S'}`;
+    if (m === 'daily') extra = `TODAY'S BEST ${daily.bestDate === today ? daily.best : 0} · STREAK ${streak} DAY${streak === 1 ? '' : 'S'}`;
     else if (md.ranked) extra = 'BEST ' + best(m);
     return `<button class="btn modecard ${m === settings.mode ? 'sel' : ''}" data-act="pickMode" data-mode="${m}"><b>${md.name}</b><span>${md.desc}</span>${extra ? `<em>${extra}</em>` : ''}</button>`;
   }).join('');
@@ -1988,6 +2067,7 @@ function renderPause() {
   const rs = document.getElementById('restartBtn'); rs.dataset.armed = ''; rs.textContent = 'RESTART';
 }
 function applySettings() {
+  autoLowGlow = false;
   Sound.applyVolume();
   if (!settings.sound) Sound.ufoStop();
   document.body.classList.toggle('crt', !!settings.crt);
@@ -2106,7 +2186,6 @@ const actions = {
     const hadFocus = b === document.activeElement;
     const opts = def[2], i = opts.findIndex(o => o[0] === settings[def[0]]);
     settings[def[0]] = opts[(i + 1) % opts.length][0];
-    if (def[0] === 'controls' && settings.controls === 'tilt') enableTilt();
     applySettings(); renderSettings();
     const nb = document.querySelector(`[data-act="set"][data-key="${def[0]}"]`); if (nb && hadFocus) nb.focus();
   },
@@ -2151,8 +2230,10 @@ function importSave() {
     if (!c.startsWith('SI2:')) throw new Error('bad');
     const o = JSON.parse(decodeURIComponent(escape(atob(c.slice(4)))));
     let n = 0;
-    for (const k in o) if (k.startsWith('si.') && typeof o[k] === 'string') { localStorage.setItem(k, o[k]); n++; }
+    const KNOWN = ['si.scores', 'si.stats', 'si.ach', 'si.daily', 'si.initials', 'si.settings', 'si.ver', 'si.tutorialDone', 'si.tipDismissed'];
+    for (const k of KNOWN) if (typeof o[k] === 'string') { JSON.parse(o[k]); localStorage.setItem(k, o[k]); n++; }   // contents are re-checked on load
     if (!n) throw new Error('empty');
+    importing = true;
     toast('IMPORTED. RESTARTING...');
     setTimeout(() => location.reload(), 700);
   } catch (e) { toast('THAT CODE DID NOT WORK'); }
@@ -2188,7 +2269,7 @@ function releaseWake() { try { if (wake) wake.release(); } catch (e) {} wake = n
 
 // ── Resume an interrupted game (iOS often unloads background tabs) ──────────
 function saveGame() {
-  if (!G || G.demo || G.phase === 'over' || (state !== 'playing' && state !== 'paused')) return;
+  if (importing || !G || G.demo || G.phase === 'over' || (state !== 'playing' && state !== 'paused')) return;
   const o = {};
   for (const k in G) if (!['fx', 'parts', 'pops', 'rings', 'shields', 'ground', 'cfg', 'diff', 'shots', 'aiTarget'].includes(k)) o[k] = G[k];
   o.ground = Array.from(G.ground);
@@ -2226,7 +2307,7 @@ function beginPlay() {
   Sound.quiet = false;
   state = 'playing';
   clearInputs(); hideScreens();
-  acc = 0; lastT = performance.now(); perf.t = 0;
+  acc = 0; lastT = performance.now(); perf.t = 0; perf.slow = 0;
   requestWake(); armHistory();
   if (settings.controls === 'tilt') enableTilt();
 }
@@ -2337,22 +2418,24 @@ document.addEventListener('visibilitychange', () => {
   else Sound.resume();
 });
 window.addEventListener('blur', () => { if (state === 'playing') pause(); clearInputs(); });
-window.addEventListener('pagehide', () => { saveGame(); store.set('stats', stats); });
+let importing = false;
+window.addEventListener('pagehide', () => { if (importing) return; saveGame(); store.set('stats', stats); });
 
 // iOS can throw away canvas memory under pressure — rebuild caches when it comes back
-cv.addEventListener('contextlost', e => e.preventDefault());
 cv.addEventListener('contextrestored', () => { clearCaches(); buildNebula(); });
 
 // ════════════════════════════════════════════════════════════════════════════
 //  MAIN LOOP — fixed 60 Hz simulation, renders at the display's own rate
 // ════════════════════════════════════════════════════════════════════════════
-let lastT = performance.now(), acc = 0, fpsFrames = 0, fpsT = 0, frameNo = 0, errFrames = 0, testFreeze = false;
-const perf = { t: 0, frames: 0, slow: 0 };
+let lastRender = 0, lastT = performance.now(), acc = 0, fpsFrames = 0, fpsT = 0, frameNo = 0, testFreeze = false;
+const errTimes = [];
+const perf = { t: 0, frames: 0, long: 0, slow: 0 };
 const fpsEl = document.getElementById('fps');
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = now - lastT; lastT = now;
   if (dt > 200 || dt < 0) dt = 200;
+  const rawDt = dt;
   frameNo++;
   try {
     if ((state === 'playing' || state === 'title') && !testFreeze) {
@@ -2367,11 +2450,12 @@ function frame(now) {
       }
     }
     pollGamepad();
-    if (!(settings.fps30 && (frameNo & 1))) render(now);      // battery saver draws every other frame
-    errFrames = 0;
+    if (!settings.fps30 || now - lastRender >= 1000 / 30 - 4) { render(now); lastRender = now; }   // battery saver: 30 fps cap
   } catch (err) {
     console.error(err);                            // never let one bad frame kill the loop...
-    if (++errFrames > 90 && state !== 'error') {   // ...but if it keeps failing, say so
+    errTimes.push(now);
+    while (errTimes.length && now - errTimes[0] > 2000) errTimes.shift();
+    if (errTimes.length >= 30 && state !== 'error') {   // ...but if it keeps failing (30 errors in 2 s), say so
       state = 'error';
       document.getElementById('errMsg').textContent = String(err && err.message || err);
       showScreen('Error');
@@ -2379,12 +2463,11 @@ function frame(now) {
   }
   // Adaptive quality: drop the glow if the phone is struggling
   if (state === 'playing' && !autoLowGlow && !settings.fps30) {
-    if (!perf.t) { perf.t = now; perf.frames = 0; }
-    perf.frames++;
+    if (!perf.t) { perf.t = now; perf.frames = 0; perf.long = 0; }
+    else { perf.frames++; if (rawDt > 45) perf.long++; }       // a 30 Hz Low Power Mode screen (33 ms) is not "slow"
     if (now - perf.t > 2000) {
-      const f = perf.frames * 1000 / (now - perf.t);
-      if (f < 40) { if (++perf.slow >= 2) { autoLowGlow = true; toast('GLOW OFF FOR SMOOTHER PLAY'); } } else perf.slow = 0;
-      perf.t = now; perf.frames = 0;
+      if (perf.frames > 10 && perf.long / perf.frames > 0.3) { if (++perf.slow >= 2) { autoLowGlow = true; toast('GLOW OFF FOR SMOOTHER PLAY'); } } else perf.slow = 0;
+      perf.t = now; perf.frames = 0; perf.long = 0;
     }
   }
   if (settings.fps) {
