@@ -322,7 +322,7 @@
     <button class="btn primary" data-act="resume">RESUME</button>
     <button class="btn hidden" data-act="recenter" id="recenterBtn">RECENTER TILT</button>
     <button class="btn" data-act="settings">SETTINGS</button>
-    <button class="btn" data-act="restart">RESTART</button>
+    <button class="btn" data-act="restart" id="restartBtn">RESTART</button>
     <button class="btn danger" data-act="quit" id="quitBtn">QUIT TO MENU</button>
   </div>
 </section>
@@ -810,10 +810,11 @@ function announce(msg) { liveEl.textContent = ''; setTimeout(() => { liveEl.text
 let state = 'title';   // title | playing | paused | gameover | error
 let G = null;
 
-// Seeded random numbers: the Daily Challenge plays out the same for everyone
-function R() {
+// Seeded random numbers: the Daily Challenge plays out the same for everyone.
+// Each roll is keyed (e.g. by kill number) so one player's choices can't shift later rolls.
+function R(key) {
   if (!G || !G.seeded) return Math.random();
-  let t = (G.rng = (G.rng + 0x6D2B79F5) | 0);
+  let t = ((G.rng ^ hashStr(String(key))) + 0x6D2B79F5) | 0;
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -842,7 +843,7 @@ function newGame(demo, mode) {
     phase: 'ready', phaseT: 100, resumeT: 0, banner: null,
     player: { x: (W - 13) / 2, invuln: 0, dead: false },
     shots: [], bombs: [], capsules: [], fx: [], parts: [], pops: [], rings: [],
-    ufo: null, ufoTimer: UFO_INTERVAL, shotsFired: 0, hits: 0, kills: 0, ufos: 0, extraGiven: !!cfg.noBonusShip,
+    ufo: null, ufoTimer: UFO_INTERVAL, shotsFired: 0, hits: 0, kills: 0, ufos: 0, extraGiven: !!(cfg.noBonusShip || cfg.infinite || cfg.noBombs),
     plIdx: 0, sqIdx: 0, bombType: 0, bombReload: 90, marchT: 0, shake: 0, flash: 0, muzzle: 0, invasion: false,
     ground: new Uint8Array(W).fill(1),
     combo: 0, mult: 1, bestCombo: 0, power: null, powerCount: 0, bombsShot: 0, wavesCleared: 0,
@@ -865,6 +866,8 @@ function buildWave() {
   }
   G.alive = G.aliens.length;
   G.fleetDir = 1; G.fleetDrop = false; G.cursor = 0; G.fleetPause = 0; G.danger = false;
+  if (G.ufo) { G.ufo = null; Sound.ufoStop(); }
+  G.ufoTimer = UFO_INTERVAL;
   G.shields = SHIELD_X.map(makeShield);
   G.bombs = []; G.shots = []; G.capsules = []; G.marchT = 0;
   G.wShots = 0; G.wHits = 0; G.wDeaths = 0;
@@ -1009,7 +1012,7 @@ function killAlien(a) {
     burst(a.x + a.w / 2, a.y + 4, c, 10, 1.1);
     if (!G.demo) G.pops.push({ text: '+' + pts, x: a.x + a.w / 2, y: a.y - 2, t: 36, color: c, scale: 1 });
   }
-  if (G.cfg.powerups && !G.capsules.length && R() < 0.035) dropCapsule(a.x + a.w / 2 - 3.5, a.y + 8);
+  if (G.cfg.powerups && G.capsules.length < 3 && R('drop' + G.kills) < 0.035) dropCapsule(a.x + a.w / 2 - 3.5, a.y + 8, 'k' + G.kills);
 }
 function hitUfo() {
   const pts = UFO_SCORES[G.shotsFired % 15];
@@ -1019,16 +1022,16 @@ function hitUfo() {
   G.pops.push({ text: String(pts), x: ux + 8, y: UFO_Y, t: 80, color: col('ufo', UFO_Y), scale: 1, still: true });
   if (isFancy()) G.rings.push({ x: ux + 8, y: UFO_Y + 3, r: 2, t: 26, c: col('ufo', UFO_Y) });
   if (!G.demo) { unlock('ufo'); if (pts === 300) unlock('ufo300'); }
-  if (G.cfg.powerups) dropCapsule(ux + 4, UFO_Y + 8);
+  if (G.cfg.powerups) dropCapsule(ux + 4, UFO_Y + 8, 'u' + G.ufos);
   G.ufo = null; G.ufoTimer = UFO_INTERVAL;
   Sound.ufoStop(); Sound.ufoHit(ux); buzz(30);
 }
 
 // ── Power-ups ───────────────────────────────────────────────────────────────
-function dropCapsule(x, y) {
+function dropCapsule(x, y, key) {
   const keys = Object.keys(POWERUPS).filter(k => !(k === '+' && G.cfg.infinite));
   let total = 0; for (const k of keys) total += POWERUPS[k].w;
-  let r = R() * total, pick = keys[0];
+  let r = R('type' + key) * total, pick = keys[0];
   for (const k of keys) { r -= POWERUPS[k].w; if (r < 0) { pick = k; break; } }
   G.capsules.push({ k: pick, x: Math.round(x), y });
 }
@@ -1122,7 +1125,7 @@ function killPlayer() {
   announce(G.cfg.infinite ? 'Hit. Minus 10 seconds' : G.lives > 0 ? 'Hit. ' + G.lives + (G.lives === 1 ? ' life' : ' lives') + ' left' : 'Hit');
 }
 function invasion() {
-  if (G.cfg.infinite) { G.rebuild = true; G.timeLeft = Math.max(0, G.timeLeft - 600); killPlayer(); return; }
+  if (G.cfg.infinite) { G.rebuild = true; killPlayer(); return; }
   G.invasion = true; G.lives = 0; killPlayer();
 }
 function afterDeath() {
@@ -1233,7 +1236,7 @@ function updateBombs() {
     }
     if (b.y + 7 >= GROUND_Y) {
       G.fx.push({ spr: 'bombX', x: b.x - 1, y: GROUND_Y - 8, t: 12, total: 12, kind: 'bomb' });
-      for (let gx = b.x - 1; gx <= b.x + 3; gx++) if (gx >= 0 && gx < W && R() < 0.75) G.ground[gx] = 0;
+      for (let gx = b.x - 1; gx <= b.x + 3; gx++) if (gx >= 0 && gx < W && Math.random() < 0.75) G.ground[gx] = 0;
       if (isFancy()) burst(b.x + 1, GROUND_Y - 1, col('ground', GROUND_Y), 6, 0.8, true);   // dust
       Sound.bombHit(b.x);
       G.bombs.splice(i, 1);
@@ -1288,7 +1291,6 @@ function tick() {
       break;
     case 'play': stepPlay(); break;
     case 'dying':
-      if (G.cfg.timer) G.timeLeft = Math.max(0, G.timeLeft - 1);
       if (--G.phaseT <= 0) afterDeath();
       break;
     case 'waveclear':
@@ -1503,7 +1505,7 @@ window.addEventListener('keydown', e => {
     if (k === 'Escape' || k === 'Backspace') { backAction(); e.preventDefault(); return; }
     if ((k === 'p' || k === 'P') && current === 'Pause') { resume(); return; }
     if (k === 'Enter' && !(ae && ae.matches && ae.matches('button')) && !e.repeat) {
-      if (current === 'Title') startGame(); else if (current === 'Over' && !document.getElementById('againBtn').disabled) startGame();
+      if (current === 'Title') titleGo(); else if (current === 'Over' && !document.getElementById('againBtn').disabled) startGame();
     }
     return;
   }
@@ -1521,7 +1523,7 @@ window.addEventListener('keyup', e => {
 function focusables() {
   const scr = current && document.getElementById(screens[current]);
   if (!scr) return [];
-  return Array.from(scr.querySelectorAll('button:not([disabled]), input, [data-act="initSel"]')).filter(el => el.offsetParent !== null && !el.classList.contains('hidden'));
+  return Array.from(scr.querySelectorAll('button:not([disabled]), input')).filter(el => el.offsetParent !== null && !el.classList.contains('hidden'));
 }
 function moveFocus(d) {
   const f = focusables();
@@ -1533,18 +1535,27 @@ function moveFocus(d) {
 }
 // Controllers: Start pauses, D-pad + A/B drive the menus
 function pollGamepad() {
-  const now = { start: false, a: false, b: false, up: false, down: false };
+  const now = { start: false, a: false, b: false, up: false, down: false, left: false, right: false };
   for (const gp of getPads()) {
     if (!gp) continue;
     const b = i => gp.buttons[i] && gp.buttons[i].pressed, ay = gp.axes[1] || 0;
     now.start = now.start || b(9); now.a = now.a || b(0); now.b = now.b || b(1);
     now.up = now.up || b(12) || ay < -0.6; now.down = now.down || b(13) || ay > 0.6;
+    const ax = gp.axes[0] || 0; now.left = now.left || b(14) || ax < -0.6; now.right = now.right || b(15) || ax > 0.6;
   }
   const prev = input.gp, edge = k => now[k] && !prev[k];
   input.gp = now;
   if (edge('start')) {
     if (state === 'playing') pause(); else if (state === 'paused' && current === 'Pause') resume();
-    else if (current === 'Title') startGame();
+    else if (current === 'Title') titleGo();
+    return;
+  }
+  if (current === 'Init') {
+    if (edge('up')) cycleInit(initState.i, 1);
+    if (edge('down')) cycleInit(initState.i, -1);
+    if (edge('left')) { initState.i = Math.max(0, initState.i - 1); renderInit(); }
+    if (edge('right')) { initState.i = Math.min(2, initState.i + 1); renderInit(); }
+    if ((edge('a') || edge('b')) && !menuLocked()) { if (edge('a') && initState.i < 2) { initState.i++; renderInit(); } else initDone(); }
     return;
   }
   if (current && state !== 'playing') {
@@ -1854,6 +1865,7 @@ function hideScreens() {
   document.getElementById('controls').classList.toggle('hidden', state !== 'playing');
 }
 function backAction() {
+  if (menuLocked()) return;
   switch (current) {
     case 'Modes': case 'How': case 'Scores': case 'Ach': case 'Settings': showScreen(backTo || 'Title'); break;
     case 'Pause': resume(); break;
@@ -1973,6 +1985,7 @@ function renderPause() {
   document.getElementById('pauseInfo').innerHTML = esc(MODES[G.mode].name) + '<br>SCORE ' + G.score + ' · WAVE ' + G.wave + ' · ' + life;
   document.getElementById('recenterBtn').classList.toggle('hidden', settings.controls !== 'tilt');
   const q = document.getElementById('quitBtn'); q.dataset.armed = ''; q.textContent = 'QUIT TO MENU';
+  const rs = document.getElementById('restartBtn'); rs.dataset.armed = ''; rs.textContent = 'RESTART';
 }
 function applySettings() {
   Sound.applyVolume();
@@ -2000,6 +2013,7 @@ function showInitials(entry) {
   document.getElementById('initScore').textContent = entry.s;
   renderInit();
   showScreen('Init');
+  lockMenu(900);
 }
 function renderInit() {
   for (let k = 0; k < 3; k++) {
@@ -2021,7 +2035,7 @@ function initKey(e) {
   else if (k === 'ArrowRight') { initState.i = Math.min(2, initState.i + 1); renderInit(); }
   else if (k === 'ArrowUp') cycleInit(initState.i, 1);
   else if (k === 'ArrowDown') cycleInit(initState.i, -1);
-  else if (k === 'Enter' || k === 'Escape') initDone();
+  else if (k === 'Enter' || k === 'Escape') { if (!menuLocked()) initDone(); }
   else return;
   e.preventDefault();
 }
@@ -2032,12 +2046,15 @@ function initDone() {
   showOverScreen();
 }
 
-let lastScoreId = 0, overReadyAt = 0, lastResult = null;
+let lastScoreId = 0, overReadyAt = 0, lastResult = null, menuLockUntil = 0;
+const lockMenu = ms => { menuLockUntil = performance.now() + ms; };
+const menuLocked = () => performance.now() < menuLockUntil;
 function showOverScreen() {
-  const again = document.getElementById('againBtn'), menu = document.getElementById('menuBtn');
-  again.disabled = menu.disabled = true;
+  const btns = ['againBtn', 'menuBtn', 'shareBtn'].map(id => document.getElementById(id));
+  btns.forEach(b => { b.disabled = true; });
   overReadyAt = performance.now() + 900;              // stops a held thumb from instantly restarting
-  setTimeout(() => { again.disabled = menu.disabled = false; }, 900);
+  lockMenu(900);
+  setTimeout(() => btns.forEach(b => { b.disabled = false; }), 900);
   showScreen('Over');
 }
 const actions = {
@@ -2053,7 +2070,10 @@ const actions = {
   pause: () => pause(),
   resume: () => resume(),
   recenter: () => { recenterTilt(); toast('TILT CENTERED'); },
-  restart: () => startGame(),
+  restart: b => {
+    if (state === 'paused' && !b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'TAP AGAIN TO RESTART'; return; }
+    startGame();
+  },
   quit: b => {
     if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'TAP AGAIN TO QUIT'; return; }
     clearSave(); toTitle();
@@ -2098,6 +2118,7 @@ const actions = {
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-act]');
   if (!b || b.disabled) return;
+  if (menuLocked() && b.closest('.screen')) return;
   Sound.unlock(); Sound.click(); armHistory();
   const fn = actions[b.dataset.act];
   if (fn) fn(b);
@@ -2219,6 +2240,7 @@ function startGame(mode) {
   maybeTutorial();
   announce(MODES[G.mode].name + '. Wave 1. Get ready');
 }
+function titleGo() { if (loadSave()) continueGame(); else startGame(); }
 function continueGame() {
   const o = loadSave();
   if (!o || !restoreGame(o)) { clearSave(); toast('SAVED GAME NOT FOUND'); refreshTitle(); return; }
@@ -2235,6 +2257,7 @@ function pause() {
   saveGame();
   backTo = 'Pause';
   showScreen('Pause');
+  lockMenu(400);
   announce('Paused');
 }
 function resume() {
@@ -2261,7 +2284,7 @@ function gameOver() {
   const cfg = G.cfg, ranked = cfg.ranked && !G.assisted;
   const prevBest = best(G.mode), killsBefore = stats.kills;
   let rank = -1, entry = null;
-  if (ranked) {
+  if (ranked && G.score > 0) {
     entry = { s: G.score, w: G.wave, d: Date.now(), n: initials };
     const list = scores[G.mode];
     list.push(entry); list.sort((a, b) => b.s - a.s || a.d - b.d);
@@ -2277,7 +2300,7 @@ function gameOver() {
     stats.longestSec = Math.max(stats.longestSec, secs); stats.wavesCleared += G.wavesCleared; stats.bombsShot += G.bombsShot;
     store.set('stats', stats);
   }
-  if (G.mode === 'daily' && ranked) {
+  if (G.mode === 'daily' && ranked && G.daily === dateKey()) {
     const today = dateKey(), y = new Date(); y.setDate(y.getDate() - 1);
     if (daily.last !== today) { daily.streak = daily.last === dateKey(y) ? daily.streak + 1 : 1; daily.last = today; }
     if (daily.bestDate !== today) { daily.bestDate = today; daily.best = 0; }
@@ -2304,7 +2327,7 @@ function gameOver() {
   announce((G.timeUp ? 'Time up' : 'Game over') + '. Score ' + G.score + (isNewHi ? '. New high score' : ''));
   setTimeout(() => {
     if (state !== 'gameover') return;
-    if (entry && rank >= 0 && G.score > 0) showInitials(entry); else showOverScreen();
+    if (entry && rank >= 0) showInitials(entry); else showOverScreen();
     if (isNewHi) confetti();
   }, 700);
 }
@@ -2339,7 +2362,7 @@ function frame(now) {
       let n = 0;
       while (acc >= step) {
         acc -= step;
-        if (state === 'playing') tick(); else demoTick();
+        if (state === 'playing') tick(); else if (state === 'title') demoTick(); else { acc = 0; break; }
         if (++n >= 6) { acc = 0; break; }
       }
     }
